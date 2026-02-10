@@ -1,0 +1,232 @@
+{
+  "/Users/shivamdoshi/BlackjackBackend/backend/serverless.yml": {
+    "versionFramework": "4.31.2",
+    "servicePath": "/Users/shivamdoshi/BlackjackBackend/backend/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "org": "21betmaster",
+      "app": "betmaster21",
+      "service": "blackjack-trainer-backend",
+      "provider": {
+        "name": "aws",
+        "runtime": "python3.9",
+        "region": "us-east-1",
+        "iam": {
+          "role": {
+            "statements": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "dynamodb:Query",
+                  "dynamodb:Scan",
+                  "dynamodb:GetItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem"
+                ],
+                "Resource": [
+                  "arn:aws:dynamodb:us-east-1:320368025361:table/UsersTable",
+                  "arn:aws:dynamodb:us-east-1:320368025361:table/StatsTable"
+                ]
+              }
+            ]
+          }
+        },
+        "stage": "dev",
+        "versionFunctions": true
+      },
+      "functions": {
+        "signup": {
+          "handler": "handlers/auth.signup",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/signup",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/signup"
+            }
+          ],
+          "name": "blackjack-trainer-backend-dev-signup"
+        },
+        "login": {
+          "handler": "handlers/auth.login",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/login",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/login"
+            }
+          ],
+          "name": "blackjack-trainer-backend-dev-login"
+        },
+        "saveStats": {
+          "handler": "handlers/stats.save",
+          "events": [
+            {
+              "httpApi": {
+                "path": "/stats",
+                "method": "post"
+              },
+              "resolvedMethod": "POST",
+              "resolvedPath": "/stats"
+            }
+          ],
+          "name": "blackjack-trainer-backend-dev-saveStats"
+        }
+      },
+      "resources": {
+        "Resources": {
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "UsersTable",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "email",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "email",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "StatsTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "StatsTable",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "userId",
+                  "AttributeType": "S"
+                },
+                {
+                  "AttributeName": "timestamp",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "userId",
+                  "KeyType": "HASH"
+                },
+                {
+                  "AttributeName": "timestamp",
+                  "KeyType": "RANGE"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          }
+        }
+      },
+      "custom": {
+        "pythonRequirements": {
+          "dockerizePip": false,
+          "pythonBin": "python3"
+        }
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "python3.9",
+      "region": "us-east-1",
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:Query",
+                "dynamodb:Scan",
+                "dynamodb:GetItem",
+                "dynamodb:PutItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem"
+              ],
+              "Resource": [
+                "arn:aws:dynamodb:us-east-1:320368025361:table/UsersTable",
+                "arn:aws:dynamodb:us-east-1:320368025361:table/StatsTable"
+              ]
+            }
+          ]
+        }
+      },
+      "stage": "dev",
+      "versionFunctions": true
+    },
+    "dashboard": {
+      "isEnabledForService": true,
+      "requiredAuthentication": false,
+      "orgFeaturesInUse": {
+        "providers": false,
+        "monitoring": false
+      },
+      "orgObservabilityIntegrations": null,
+      "serviceAppId": "4cHdfnLPGKVYVCsS80",
+      "serviceProvider": null,
+      "instanceParameters": null
+    },
+    "serviceRawFile": "# \"org\" ensures this Service is used with the correct Serverless Framework Access Key.\norg: 21betmaster\n# \"app\" enables Serverless Framework Dashboard features and sharing them with other Services.\napp: betmaster21\nservice: blackjack-trainer-backend\n\nprovider:\n  name: aws\n  runtime: python3.9\n  region: us-east-1 # You can change this to your preferred region\n  iam:\n    role:\n      statements:\n        - Effect: \"Allow\"\n          Action:\n            - \"dynamodb:Query\"\n            - \"dynamodb:Scan\"\n            - \"dynamodb:GetItem\"\n            - \"dynamodb:PutItem\"\n            - \"dynamodb:UpdateItem\"\n            - \"dynamodb:DeleteItem\"\n          Resource:\n            - \"arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/UsersTable\"\n            - \"arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/StatsTable\"\n\nfunctions:\n  signup:\n    handler: handlers/auth.signup\n    events:\n      - httpApi:\n          path: /signup\n          method: post\n  login:\n    handler: handlers/auth.login\n    events:\n      - httpApi:\n          path: /login\n          method: post\n  saveStats:\n    handler: handlers/stats.save\n    events:\n      - httpApi:\n          path: /stats\n          method: post\n          # authorizer:\n          #   name: jwtAuthorizer\n          #   type: jwt\n          #   identitySource: \"$request.header.Authorization\"\n          #   issuerUrl: \"https://your-issuer-url/.well-known/jwks.json\" # This needs to be configured properly\n          #   audience:\n          #     - \"your-audience\"\n\nresources:\n  Resources:\n    UsersTable:\n      Type: \"AWS::DynamoDB::Table\"\n      Properties:\n        TableName: \"UsersTable\"\n        AttributeDefinitions:\n          - AttributeName: \"email\"\n            AttributeType: \"S\"\n        KeySchema:\n          - AttributeName: \"email\"\n            KeyType: \"HASH\"\n        BillingMode: \"PAY_PER_REQUEST\"\n    StatsTable:\n      Type: \"AWS::DynamoDB::Table\"\n      Properties:\n        TableName: \"StatsTable\"\n        AttributeDefinitions:\n          - AttributeName: \"userId\"\n            AttributeType: \"S\"\n          - AttributeName: \"timestamp\"\n            AttributeType: \"S\"\n        KeySchema:\n          - AttributeName: \"userId\"\n            KeyType: \"HASH\"\n          - AttributeName: \"timestamp\"\n            KeyType: \"RANGE\"\n        BillingMode: \"PAY_PER_REQUEST\"\n\ncustom:\n  pythonRequirements:\n    dockerizePip: false\n    pythonBin: python3\n",
+    "command": [
+      "info"
+    ],
+    "options": {},
+    "orgId": "ead6a2ad-e1ae-4dd5-a4f7-53ac1da17955",
+    "orgName": "21betmaster",
+    "userId": "5pjLM0jqw90zxCZTmd",
+    "userName": "21betmaster",
+    "serviceProviderAwsAccountId": "320368025361",
+    "serviceProviderAwsCfStackName": "blackjack-trainer-backend-dev",
+    "serviceProviderAwsCfStackId": "arn:aws:cloudformation:us-east-1:320368025361:stack/blackjack-trainer-backend-dev/3c3820b0-05ef-11f1-9d15-0ec1769a96c9",
+    "serviceProviderAwsCfStackCreated": "2026-02-09T19:40:49.237Z",
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": "CREATE_COMPLETE",
+    "serviceProviderAwsCfStackOutputs": [
+      {
+        "OutputKey": "SignupLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:320368025361:function:blackjack-trainer-backend-dev-signup:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-blackjack-trainer-backend-dev-SignupLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "SaveStatsLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:320368025361:function:blackjack-trainer-backend-dev-saveStats:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-blackjack-trainer-backend-dev-SaveStatsLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "HttpApiId",
+        "OutputValue": "bi5sd3la1f",
+        "Description": "Id of the HTTP API",
+        "ExportName": "sls-blackjack-trainer-backend-dev-HttpApiId"
+      },
+      {
+        "OutputKey": "LoginLambdaFunctionQualifiedArn",
+        "OutputValue": "arn:aws:lambda:us-east-1:320368025361:function:blackjack-trainer-backend-dev-login:1",
+        "Description": "Current Lambda function version",
+        "ExportName": "sls-blackjack-trainer-backend-dev-LoginLambdaFunctionQualifiedArn"
+      },
+      {
+        "OutputKey": "ServerlessDeploymentBucketName",
+        "OutputValue": "serverless-framework-deployments-us-east-1-a637d2c3-8a6f",
+        "ExportName": "sls-blackjack-trainer-backend-dev-ServerlessDeploymentBucketName"
+      },
+      {
+        "OutputKey": "HttpApiUrl",
+        "OutputValue": "https://bi5sd3la1f.execute-api.us-east-1.amazonaws.com",
+        "Description": "URL of the HTTP API",
+        "ExportName": "sls-blackjack-trainer-backend-dev-HttpApiUrl"
+      }
+    ]
+  }
+}

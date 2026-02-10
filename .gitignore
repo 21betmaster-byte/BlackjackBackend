@@ -1,0 +1,52 @@
+# macOS
+.DS_Store
+
+# Dependencies
+node_modules/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# React Native generated
+frontend/ios/
+frontend/android/
+.metro-health-check*
+*.orig.*
+*.tsbuildinfo
+
+# Native signing
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
+
+# Serverless
+backend/.serverless/
+
+# Environment files
+.env
+.env.*
+.env*.local
+
+# Debug logs
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# IDE
+.idea/
+*.swp
+*.swo

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>BetMaster21 - Loader</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;family=Noto+Sans:wght@400;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d4c4",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#102220",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {"DEFAULT": "1rem", "lg": "2rem", "xl": "3rem", "full": "9999px"},
+                },
+            },
+        }
+    </script>
+<style>
+        .poker-chip-spin {
+            animation: spin 3s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .pulse-glow {
+            animation: pulse-glow 2s ease-in-out infinite;
+        }
+        @keyframes pulse-glow {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
+        }
+        .card-shuffle {
+            animation: shuffle 1.5s ease-in-out infinite;
+        }
+        @keyframes shuffle {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(5deg); }
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark font-display antialiased overflow-hidden">
+<!-- Main Container -->
+<div class="relative flex h-screen w-full flex-col items-center justify-center overflow-hidden">
+<!-- Background Ambient Glow -->
+<div class="absolute inset-0 pointer-events-none overflow-hidden">
+<div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[120px] pulse-glow"></div>
+<div class="absolute -top-24 -right-24 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+<div class="absolute -bottom-24 -left-24 w-64 h-64 bg-primary/5 rounded-full blur-[80px]"></div>
+</div>
+<!-- Top Header (Logo Only) -->
+<div class="absolute top-0 w-full p-8 flex justify-center items-center">
+<div class="flex items-center gap-2">
+<div class="text-primary flex items-center justify-center p-2 rounded-lg bg-primary/10">
+<span class="material-symbols-outlined text-3xl font-bold">casino</span>
+</div>
+<h1 class="text-white text-2xl font-bold tracking-tight">BetMaster<span class="text-primary">21</span></h1>
+</div>
+</div>
+<!-- Center Loader Content -->
+<div class="relative z-10 flex flex-col items-center">
+<!-- Animated Poker Chip Wrapper -->
+<div class="relative w-48 h-48 flex items-center justify-center">
+<!-- Outer Ring (Rotating) -->
+<div class="absolute inset-0 border-4 border-dashed border-primary/30 rounded-full poker-chip-spin"></div>
+<!-- Inner Chip Container -->
+<div class="relative w-36 h-36 bg-background-dark border-4 border-primary rounded-full shadow-[0_0_40px_rgba(17,212,196,0.3)] flex items-center justify-center overflow-hidden">
+<!-- Chip Pattern Details -->
+<div class="absolute inset-0 flex items-center justify-center opacity-20">
+<div class="w-full h-2 bg-primary absolute rotate-0"></div>
+<div class="w-full h-2 bg-primary absolute rotate-45"></div>
+<div class="w-full h-2 bg-primary absolute rotate-90"></div>
+<div class="w-full h-2 bg-primary absolute rotate-135"></div>
+</div>
+<!-- Center Icon (Cards) -->
+<div class="relative z-10 card-shuffle">
+<span class="material-symbols-outlined text-primary text-6xl">style</span>
+</div>
+</div>
+<!-- Floating Decorative Chips -->
+<div class="absolute -top-4 -right-2 card-shuffle" style="animation-delay: 0.2s;">
+<span class="material-symbols-outlined text-primary/40 text-2xl">token</span>
+</div>
+<div class="absolute -bottom-2 -left-4 card-shuffle" style="animation-delay: 0.5s;">
+<span class="material-symbols-outlined text-primary/40 text-3xl">token</span>
+</div>
+</div>
+<!-- Loading Status -->
+<div class="mt-12 text-center px-6">
+<h2 class="text-white text-xl font-medium tracking-wide mb-2">Preparing Your Deck</h2>
+<p class="text-white/50 text-sm font-normal max-w-[240px] leading-relaxed">
+                    Calculating the optimal strategies for your next session...
+                </p>
+</div>
+<!-- Progress Bar -->
+<div class="mt-8 w-64">
+<div class="flex justify-between items-end mb-2">
+<span class="text-primary text-xs font-bold tracking-widest uppercase">Syncing</span>
+<span class="text-white/40 text-xs font-medium">84%</span>
+</div>
+<div class="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+<div class="h-full bg-primary rounded-full shadow-[0_0_10px_rgba(17,212,196,0.5)]" style="width: 84%;"></div>
+</div>
+</div>
+</div>
+<!-- Tip / Message Footer -->
+<div class="absolute bottom-12 w-full px-10 text-center">
+<div class="inline-flex items-center gap-2 bg-white/5 px-4 py-2 rounded-full border border-white/10">
+<span class="material-symbols-outlined text-primary text-sm">lightbulb</span>
+<p class="text-white/70 text-[11px] font-medium uppercase tracking-widest">Tip: Doubling down on 11 is statistically favorable.</p>
+</div>
+</div>
+<!-- Background Image Texture -->
+<div class="absolute inset-0 opacity-5 pointer-events-none mix-blend-overlay" data-alt="Subtle dark geometric pattern texture for background" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuDoVE2ut7L6DuKJQceWkh1Z0xmek5vFk6zhUe7-iW5RNSok6ZyCCPEIYbKAnHBiZqPMEXDz5jLPDmRcMohKQ9bQ76xgY6h6NU17Br5dAt72WzOW311K8fOClXPPLbzWNDBR3_eCGxfudKSE43kvPVc9CaRapuiTAK0-oAZuKSIp40RKaL5D0h-ouVwWCnCGh46pT0wy5qaU2KgSjQOvoiWH6Snzdu94ZrMm_vxna0OUltJpNpG7iSDFo_pT_GUcPZ8o1Yca4dbAnbId'); background-size: cover;">
+</div>
+</div>
+</body></html>

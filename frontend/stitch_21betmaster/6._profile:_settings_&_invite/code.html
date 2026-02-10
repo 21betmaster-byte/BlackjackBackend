@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Profile: Settings &amp; Invite - BetMaster21</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Spline+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#11d4c4",
+                        "background-light": "#f6f8f8",
+                        "background-dark": "#102220",
+                    },
+                    fontFamily: {
+                        "display": ["Spline Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "1rem",
+                        "lg": "2rem",
+                        "xl": "3rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Spline Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-white transition-colors duration-300">
+<div class="relative flex min-h-screen w-full max-w-[430px] mx-auto flex-col overflow-x-hidden border-x border-gray-200 dark:border-gray-800 shadow-2xl">
+<!-- TopAppBar -->
+<header class="sticky top-0 z-50 flex items-center bg-background-light/80 dark:bg-background-dark/80 backdrop-blur-md px-4 py-4 justify-between border-b border-gray-200 dark:border-gray-800">
+<button class="flex size-10 items-center justify-center rounded-full hover:bg-gray-200 dark:hover:bg-gray-800 transition-colors">
+<span class="material-symbols-outlined">arrow_back_ios_new</span>
+</button>
+<h1 class="text-lg font-bold leading-tight tracking-tight flex-1 text-center pr-10">Profile Settings</h1>
+</header>
+<main class="flex-1 pb-24">
+<!-- Profile Overview (Compact) -->
+<div class="p-6 flex flex-col items-center">
+<div class="relative">
+<img alt="User Profile" class="size-24 rounded-full border-4 border-primary shadow-lg object-cover" data-alt="Professional male user profile portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBGShgYsbpaMVHMAhKmhVZWFhiCsTFvYNp4v5xkmuMWRZx2GL5hRIz-m8eLgrVIWnYaoHJX-4-Lqffm6vPknHbf8U6m9t6eEajUwAEeEw2VmpYxS534KdZGBB6rm6fKXIJWzbjAZU9gPPr0c32bym_Ar_c055RPdEIfAtxG6LDTGF83R3QZwphwQ38nrZcqzIGRzFeBIrW_sb-2YbYBMdsK2vtVEGuome52RyW6Ya5HAW8LCqMeRfMl9wJaROQeGvvm3wfuEx1JrZGB"/>
+<div class="absolute bottom-0 right-0 bg-primary size-7 rounded-full flex items-center justify-center border-2 border-background-dark">
+<span class="material-symbols-outlined text-[16px] text-background-dark font-bold">edit</span>
+</div>
+</div>
+<h2 class="mt-4 text-xl font-bold">Alex Johnson</h2>
+<p class="text-sm text-gray-500 dark:text-gray-400">Pro Tier • 12,450 XP</p>
+</div>
+<!-- Preferences Section -->
+<section class="mt-2">
+<h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 px-6 mb-3">Preferences</h3>
+<div class="mx-4 space-y-2">
+<!-- Language -->
+<button class="flex w-full items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-xl hover:bg-gray-50 dark:hover:bg-white/10 transition-colors">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+<span class="material-symbols-outlined">translate</span>
+</div>
+<div class="flex flex-1 flex-col items-start">
+<span class="font-medium">Language</span>
+<span class="text-sm text-gray-500">English (US)</span>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+<!-- Dark Mode Toggle -->
+<div class="flex w-full items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-xl">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+<span class="material-symbols-outlined">dark_mode</span>
+</div>
+<div class="flex-1 text-left">
+<span class="font-medium">Dark Mode</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+<!-- Haptic Feedback -->
+<div class="flex w-full items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-xl">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/20 text-primary">
+<span class="material-symbols-outlined">vibration</span>
+</div>
+<div class="flex-1 text-left">
+<span class="font-medium">Haptic Feedback</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input checked="" class="sr-only peer" type="checkbox"/>
+<div class="w-11 h-6 bg-gray-300 dark:bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+</label>
+</div>
+</div>
+</section>
+<!-- Invite Section -->
+<section class="mt-8">
+<h3 class="text-xs font-bold uppercase tracking-widest text-gray-500 dark:text-gray-400 px-6 mb-3">Invite Friends</h3>
+<div class="mx-4 p-6 bg-primary/10 border border-primary/20 rounded-2xl">
+<div class="flex items-center gap-4 mb-4">
+<div class="size-12 bg-primary rounded-full flex items-center justify-center text-background-dark">
+<span class="material-symbols-outlined font-bold">celebration</span>
+</div>
+<div>
+<h4 class="font-bold text-lg">Win Together</h4>
+<p class="text-xs text-gray-500 dark:text-gray-400 leading-tight">Refer a friend and you both get 500 Chips for training!</p>
+</div>
+</div>
+<div class="space-y-4">
+<div class="relative">
+<input class="w-full bg-white dark:bg-background-dark border-2 border-primary/30 rounded-full py-3 px-5 text-sm font-medium focus:outline-none focus:border-primary" readonly="" type="text" value="betmaster21.com/ref/alexj"/>
+<button class="absolute right-2 top-1.5 bg-primary text-background-dark px-4 py-1.5 rounded-full text-xs font-bold hover:brightness-110 active:scale-95 transition-all">
+                                Copy
+                            </button>
+</div>
+<div class="flex justify-between items-center px-2">
+<button class="flex flex-col items-center gap-2 group">
+<div class="size-12 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 flex items-center justify-center group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-green-500">chat</span>
+</div>
+<span class="text-[10px] font-medium uppercase tracking-tighter opacity-70">WhatsApp</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<div class="size-12 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 flex items-center justify-center group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-blue-400">alternate_email</span>
+</div>
+<span class="text-[10px] font-medium uppercase tracking-tighter opacity-70">Twitter</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<div class="size-12 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 flex items-center justify-center group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-indigo-500">message</span>
+</div>
+<span class="text-[10px] font-medium uppercase tracking-tighter opacity-70">Messages</span>
+</button>
+<button class="flex flex-col items-center gap-2 group">
+<div class="size-12 rounded-full bg-white dark:bg-white/5 border border-gray-200 dark:border-gray-700 flex items-center justify-center group-active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-blue-600">share</span>
+</div>
+<span class="text-[10px] font-medium uppercase tracking-tighter opacity-70">More</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Support Section -->
+<section class="mt-8">
+<div class="mx-4 space-y-2">
+<button class="flex w-full items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-xl">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-gray-200 dark:bg-white/10 text-gray-500 dark:text-gray-400">
+<span class="material-symbols-outlined">help</span>
+</div>
+<div class="flex-1 text-left">
+<span class="font-medium">Help Center</span>
+</div>
+<span class="material-symbols-outlined text-gray-400">chevron_right</span>
+</button>
+<button class="flex w-full items-center gap-4 bg-white dark:bg-white/5 p-4 rounded-xl text-red-400">
+<div class="flex size-10 shrink-0 items-center justify-center rounded-full bg-red-400/10">
+<span class="material-symbols-outlined">logout</span>
+</div>
+<div class="flex-1 text-left">
+<span class="font-medium">Logout</span>
+</div>
+</button>
+</div>
+</section>
+</main>
+<!-- Bottom Navigation Bar (iOS Style) -->
+<nav class="fixed bottom-0 z-50 w-full max-w-[430px] bg-background-light/95 dark:bg-background-dark/95 backdrop-blur-xl border-t border-gray-200 dark:border-gray-800 pb-8 pt-3 flex justify-around items-center">
+<a class="flex flex-col items-center gap-1 text-gray-400" href="#">
+<span class="material-symbols-outlined text-[28px]">home</span>
+<span class="text-[10px] font-medium">Home</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400" href="#">
+<span class="material-symbols-outlined text-[28px]">sports_esports</span>
+<span class="text-[10px] font-medium">Train</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-gray-400" href="#">
+<span class="material-symbols-outlined text-[28px]">leaderboard</span>
+<span class="text-[10px] font-medium">Stats</span>
+</a>
+<a class="flex flex-col items-center gap-1 text-primary" href="#">
+<span class="material-symbols-outlined text-[28px] fill-current" style="font-variation-settings: 'FILL' 1">person</span>
+<span class="text-[10px] font-medium">Profile</span>
+</a>
+</nav>
+<!-- Dynamic Success Toast (Hidden by default) -->
+<div class="fixed top-20 left-1/2 -translate-x-1/2 bg-primary text-background-dark px-6 py-3 rounded-full font-bold shadow-2xl z-[100] flex items-center gap-2 opacity-0 pointer-events-none transition-opacity duration-300">
+<span class="material-symbols-outlined">check_circle</span>
+            Referral Link Copied!
+        </div>
+</div>
+</body></html>

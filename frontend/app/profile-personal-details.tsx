@@ -130,14 +130,14 @@ const ProfileBottomNav = () => {
 
     return(
         <View style={[styles.bottomNav, { backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.95)' : 'rgba(255, 255, 255, 0.9)', borderColor: colorScheme === 'dark' ? Colors.dark.border : '#e2e8f0' }]}>
-            <TouchableOpacity style={styles.navButton}><MaterialIcons name="home" size={24} color={'#94a3b8'} /><Text style={[styles.navText, { color: '#94a3b8' }]}>Home</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.navButton} onPress={() => router.push('/home-dashboard')}><MaterialIcons name="home" size={24} color={'#94a3b8'} /><Text style={[styles.navText, { color: '#94a3b8' }]}>Home</Text></TouchableOpacity>
             <TouchableOpacity style={styles.navButton}><MaterialIcons name="bar-chart" size={24} color={'#94a3b8'} /><Text style={[styles.navText, { color: '#94a3b8' }]}>Stats</Text></TouchableOpacity>
             <View style={{alignItems: 'center'}}>
                 <TouchableOpacity style={[styles.centerNavButton, { backgroundColor: Colors.primary, borderColor: colorScheme === 'dark' ? themeColors.background : '#fff' }]}><MaterialIcons name="play-arrow" size={32} color={Colors.dark.background} /></TouchableOpacity>
                 <Text style={[styles.navText, {position: 'absolute', bottom: -18, color: Colors.primary, fontWeight: 'bold'}]}>START SESSION</Text>
             </View>
             <TouchableOpacity style={styles.navButton}><MaterialIcons name="school" size={24} color={'#94a3b8'} /><Text style={[styles.navText, { color: '#94a3b8' }]}>Train</Text></TouchableOpacity>
-            <TouchableOpacity style={styles.navButton}><MaterialIcons name="account-circle" size={24} color={Colors.primary} /><Text style={[styles.navText, { color: Colors.primary }]}>Profile</Text></TouchableOpacity>
+            <TouchableOpacity style={styles.navButton} onPress={() => router.push('/profile-settings-invite')}><MaterialIcons name="account-circle" size={24} color={Colors.primary} /><Text style={[styles.navText, { color: Colors.primary }]}>Profile</Text></TouchableOpacity>
         </View>
     )
 }

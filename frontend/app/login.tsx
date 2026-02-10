@@ -15,11 +15,13 @@ import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 const LoginScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
 
+  const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -31,10 +33,9 @@ const LoginScreen = () => {
         password,
       });
       if (response.data.access_token) {
-        // In a real app, you would store this token securely (e.g., AsyncStorage)
-        console.log('Login successful, token:', response.data.access_token);
+        await login(response.data.access_token);
         Alert.alert('Success', 'Logged in successfully!');
-        router.push('/home-dashboard'); // Navigate to the home dashboard
+        router.push('/home-dashboard');
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {

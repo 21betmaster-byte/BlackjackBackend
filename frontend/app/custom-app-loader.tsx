@@ -76,8 +76,7 @@ const CustomAppLoaderScreen = () => {
       setProgress(prev => {
         if (prev >= 100) {
           clearInterval(interval);
-          // Optional: navigate away after loading
-          // router.replace('/home-dashboard');
+          router.replace('/home-dashboard');
           return 100;
         }
         return prev + 4;

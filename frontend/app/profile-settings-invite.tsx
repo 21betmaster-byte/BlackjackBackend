@@ -12,11 +12,12 @@ import {
   TextInput,
   Platform,
   Animated,
-  Clipboard,
 } from 'react-native';
+import * as ExpoClipboard from 'expo-clipboard';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
 
 const ProfileSettingsInviteScreen = () => {
   const colorScheme = useColorScheme();
@@ -28,11 +29,17 @@ const ProfileSettingsInviteScreen = () => {
   const [toastVisible, setToastVisible] = useState(false);
   const toastOpacity = useRef(new Animated.Value(0)).current;
 
+  const { logout } = useAuth();
   const referralLink = 'betmaster21.com/ref/alexj';
 
-  const copyToClipboard = () => {
-    Clipboard.setString(referralLink);
+  const copyToClipboard = async () => {
+    await ExpoClipboard.setStringAsync(referralLink);
     setToastVisible(true);
+  };
+
+  const handleLogout = async () => {
+    await logout();
+    router.replace('/login');
   };
 
   useEffect(() => {
@@ -117,7 +124,7 @@ const ProfileSettingsInviteScreen = () => {
            <View style={[styles.section, {marginBottom: 100}]}>
              <View style={styles.sectionContent}>
                  <SettingsRow icon="help" title="Help Center" isFirst onPress={() => console.log('Help Center')} />
-                 <SettingsRow icon="logout" title="Logout" isLast isDestructive onPress={() => console.log('Logout')} />
+                 <SettingsRow icon="logout" title="Logout" isLast isDestructive onPress={handleLogout} />
              </View>
            </View>
 
@@ -160,7 +167,7 @@ const ShareButton = ({icon, brandColor, label}) => {
 
 const SettingsBottomNav = () => (
     <View style={[styles.bottomNav, { backgroundColor: useColorScheme() === 'dark' ? 'rgba(16, 34, 32, 0.95)' : 'rgba(246, 248, 248, 0.95)', borderColor: useColorScheme() === 'dark' ? '#1e293b' : '#e2e8f0' }]}>
-        <TouchableOpacity style={styles.navButton}><MaterialIcons name="home" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Home</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/home-dashboard')}><MaterialIcons name="home" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Home</Text></TouchableOpacity>
         <TouchableOpacity style={styles.navButton}><MaterialIcons name="sports-esports" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Train</Text></TouchableOpacity>
         <TouchableOpacity style={styles.navButton}><MaterialIcons name="leaderboard" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Stats</Text></TouchableOpacity>
         <TouchableOpacity style={styles.navButton}><MaterialIcons name="person" size={28} color={Colors.primary} /><Text style={[styles.navText, {color: Colors.primary}]}>Profile</Text></TouchableOpacity>

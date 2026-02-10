@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -17,26 +17,13 @@ import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '../config';
+import { useAuth } from '../contexts/AuthContext';
 
 const HomeDashboardScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
 
-  const [authToken, setAuthToken] = useState<string | null>(null);
-
-  useEffect(() => {
-    // In a real application, you would retrieve the token from secure storage (e.g., AsyncStorage)
-    // For testing purposes, you might mock this or retrieve it from a global state/context
-    const fetchToken = async () => {
-      // Simulate fetching a token, or use a hardcoded one if testing without a full login flow
-      // A more robust solution would involve react context or AsyncStorage
-      // For now, let's just assume a dummy token or retrieve one from a stored value if available.
-      // NOTE: This dummy token is for demonstration. In a real app, it should come from a successful login.
-      const dummyToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c"; 
-      setAuthToken(dummyToken);
-    };
-    fetchToken();
-  }, []);
+  const { token: authToken } = useAuth();
 
   const handleSaveMockStats = async () => {
     if (!authToken) {
@@ -46,7 +33,7 @@ const HomeDashboardScreen = () => {
 
     try {
       const response = await axios.post(
-        `${API_URL}/save_stats`,
+        `${API_URL}/stats`,
         {
           result: Math.random() > 0.5 ? 'win' : 'loss', // Random win/loss
           mistakes: Math.floor(Math.random() * 3), // 0-2 mistakes
@@ -200,7 +187,7 @@ const CustomBottomNav = () => {
                 <MaterialIcons name="auto-stories" size={24} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
                 <Text style={[styles.navButtonText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>Strategy</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton}>
+            <TouchableOpacity style={styles.navButton} onPress={() => router.push('/profile-settings-invite')}>
                 <MaterialIcons name="person" size={24} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
                 <Text style={[styles.navButtonText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>Profile</Text>
             </TouchableOpacity>

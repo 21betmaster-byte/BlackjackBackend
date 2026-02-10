@@ -27,13 +27,12 @@ const LanguageThemeSetupScreen = () => {
   };
 
   const handleContinue = () => {
-    // Placeholder for continue logic
     console.log('Continue to Training with preferences:', {
       selectedLanguage,
       selectedTheme,
       highContrastModeEnabled,
     });
-    // Navigate to next step or training
+    router.push('/home-dashboard');
   };
 
   return (

@@ -27,9 +27,8 @@ const MandatoryDetailsScreen = () => {
   const countryError = country.trim() === ''; // Simulate error
 
   const handleContinue = () => {
-    // Placeholder for continue logic
     console.log('Continue with mandatory details:', { firstName, lastName, dob, country });
-    // Navigate to next step or home
+    router.push('/language-theme-setup');
   };
 
   const handleBack = () => {

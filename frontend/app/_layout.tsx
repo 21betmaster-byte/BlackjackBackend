@@ -31,7 +31,6 @@ function RootNavigator() {
         <Stack.Screen name="profile-personal-details" options={{ headerShown: false }} />
         <Stack.Screen name="profile-settings-invite" options={{ headerShown: false }} />
         <Stack.Screen name="custom-app-loader" options={{ headerShown: false }} />
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

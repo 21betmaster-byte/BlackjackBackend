@@ -96,3 +96,49 @@ def login(event, context):
             "statusCode": 500,
             "body": json.dumps({"detail": "An unexpected error occurred."}),
         }
+
+def google_auth(event, context):
+    try:
+        body = json.loads(event["body"])
+        email = body.get("email")
+        google_id = body.get("google_id")
+        name = body.get("name", "")
+
+        if not email or not google_id:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"detail": "Email and google_id are required."}),
+            }
+
+        response = users_table.get_item(Key={"email": email})
+
+        if "Item" in response:
+            # Existing user — generate token and return
+            user = response["Item"]
+            access_token = create_access_token(data={"sub": user["id"]})
+        else:
+            # New user — create account without password
+            user_id = str(uuid.uuid4())
+            users_table.put_item(
+                Item={
+                    "id": user_id,
+                    "email": email,
+                    "name": name,
+                    "google_id": google_id,
+                    "auth_provider": "google",
+                    "created_at": str(datetime.now()),
+                }
+            )
+            access_token = create_access_token(data={"sub": user_id})
+
+        return {
+            "statusCode": 200,
+            "body": json.dumps({"access_token": access_token, "token_type": "bearer"}),
+        }
+
+    except Exception as e:
+        print(f"Google auth error: {e}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"detail": "An unexpected error occurred."}),
+        }

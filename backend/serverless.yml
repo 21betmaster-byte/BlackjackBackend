@@ -36,6 +36,12 @@ functions:
       - httpApi:
           path: /login
           method: post
+  googleAuth:
+    handler: handlers/auth.google_auth
+    events:
+      - httpApi:
+          path: /google-auth
+          method: post
   saveStats:
     handler: handlers/stats.save
     events:

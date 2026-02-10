@@ -28,7 +28,7 @@ const MandatoryDetailsScreen = () => {
 
   const handleContinue = () => {
     console.log('Continue with mandatory details:', { firstName, lastName, dob, country });
-    router.push('/language-theme-setup');
+    router.push('/home-dashboard');
   };
 
   const handleBack = () => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -14,8 +14,18 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import * as Google from 'expo-auth-session/providers/google';
+import * as WebBrowser from 'expo-web-browser';
+
+WebBrowser.maybeCompleteAuthSession();
+
+const LANGUAGES = [
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'zh', flag: '🇨🇳', label: '中文' },
+  { code: 'hi', flag: '🇮🇳', label: 'हिन्दी' },
+];
 
 const LoginScreen = () => {
   const colorScheme = useColorScheme();
@@ -25,6 +35,48 @@ const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
+
+  const selectedFlag = LANGUAGES.find(l => l.code === selectedLanguage)?.flag ?? '🇬🇧';
+
+  const [request, response, promptAsync] = Google.useAuthRequest({
+    webClientId: GOOGLE_WEB_CLIENT_ID,
+    iosClientId: GOOGLE_IOS_CLIENT_ID,
+    androidClientId: GOOGLE_ANDROID_CLIENT_ID,
+  });
+
+  useEffect(() => {
+    if (response?.type === 'success') {
+      const { authentication } = response;
+      if (authentication?.accessToken) {
+        fetchGoogleUserAndAuth(authentication.accessToken);
+      }
+    }
+  }, [response]);
+
+  const fetchGoogleUserAndAuth = async (accessToken: string) => {
+    try {
+      const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      const userInfo = await userInfoResponse.json();
+
+      const authResponse = await axios.post(`${API_URL}/google-auth`, {
+        email: userInfo.email,
+        google_id: userInfo.id,
+        name: userInfo.name,
+      });
+
+      if (authResponse.data.access_token) {
+        await login(authResponse.data.access_token);
+        router.push('/mandatory-details');
+      }
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
+      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+    }
+  };
 
   const handleLogin = async () => {
     try {
@@ -35,7 +87,7 @@ const LoginScreen = () => {
       if (response.data.access_token) {
         await login(response.data.access_token);
         Alert.alert('Success', 'Logged in successfully!');
-        router.push('/home-dashboard');
+        router.push('/mandatory-details');
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -52,8 +104,7 @@ const LoginScreen = () => {
   };
 
   const handleGoogleSignIn = () => {
-    // Placeholder for Google Sign-In logic
-    console.log('Continue with Google');
+    promptAsync({ windowFeatures: { popup: true, width: 500, height: 600 } });
   };
 
   return (
@@ -72,7 +123,35 @@ const LoginScreen = () => {
             />
           </TouchableOpacity>
           <Text style={[styles.appBarTitle, { color: themeColors.text }]}>BetMaster21</Text>
+          <TouchableOpacity
+            style={styles.languageButton}
+            onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
+          >
+            <Text style={styles.languageFlag}>{selectedFlag}</Text>
+          </TouchableOpacity>
         </View>
+
+        {/* Language Dropdown */}
+        {languageDropdownVisible && (
+          <View style={[styles.languageDropdown, {
+            backgroundColor: colorScheme === 'dark' ? '#1e293b' : 'white',
+            borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
+          }]}>
+            {LANGUAGES.map((lang) => (
+              <TouchableOpacity
+                key={lang.code}
+                style={styles.languageOption}
+                onPress={() => {
+                  setSelectedLanguage(lang.code);
+                  setLanguageDropdownVisible(false);
+                }}
+              >
+                <Text style={styles.languageFlag}>{lang.flag}</Text>
+                <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         {/* Hero Section / Logo (similar to signup for consistency) */}
         <View style={styles.heroContainer}>
@@ -245,7 +324,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
-    paddingRight: 48, // Compensate for back button width
+    paddingRight: 0,
   },
   heroContainer: {
     width: '100%',
@@ -421,6 +500,42 @@ const styles = StyleSheet.create({
   },
   footerSpacer: {
     height: 40,
+  },
+  languageButton: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexShrink: 0,
+  },
+  languageDropdown: {
+    position: 'absolute',
+    top: 60,
+    right: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingVertical: 4,
+    zIndex: 100,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+    minWidth: 140,
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    gap: 10,
+  },
+  languageFlag: {
+    fontSize: 24,
+  },
+  languageLabel: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 });
 

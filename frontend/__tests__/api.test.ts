@@ -13,6 +13,7 @@ jest.mock('react-native', () => ({
 // Mocking axios
 jest.mock('axios');
 const mockedAxios = axios as jest.Mocked<typeof axios>;
+mockedAxios.isAxiosError = jest.fn((error: any) => error != null && error.response != null) as any;
 
 // Mocking expo-router's router.push
 jest.mock('expo-router', () => ({
@@ -33,7 +34,8 @@ const React = jest.requireMock('react');
 describe('Frontend API Interactions', () => {
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    mockedAxios.isAxiosError = jest.fn((error: any) => error != null && error.response != null) as any;
   });
 
   // Test for Signup functionality
@@ -46,13 +48,6 @@ describe('Frontend API Interactions', () => {
     React.useState.mockImplementationOnce(() => ['password123', jest.fn()]); // password
     React.useState.mockImplementationOnce(() => [false, jest.fn()]); // showPassword
 
-    const SignUpScreen = require('../app/signup').default;
-    // We need to simulate the component's internal function call
-    // For testing functional components that interact with hooks, `renderHook` is appropriate.
-    // However, directly calling the `handleSignUp` from a rendered component is usually better.
-    // For this specific case where `handleSignUp` is an internal function, we'll re-structure the test.
-
-    // Simulate the component logic within a testable context
     const { result } = renderHook(() => {
       const [email, setEmail] = React.useState('');
       const [password, setPassword] = React.useState('');
@@ -148,7 +143,7 @@ describe('Frontend API Interactions', () => {
                 const response = await mockedAxios.post(`${API_URL}/login`, { email, password });
                 if (response.data.access_token) {
                     Alert.alert('Success', 'Logged in successfully!');
-                    router.push('/home-dashboard');
+                    router.push('/mandatory-details');
                 }
             } catch (error) {
                 Alert.alert('Error', 'An error occurred.');
@@ -170,7 +165,7 @@ describe('Frontend API Interactions', () => {
       password: 'loginpassword',
     });
     expect(Alert.alert).toHaveBeenCalledWith('Success', 'Logged in successfully!');
-    expect(router.push).toHaveBeenCalledWith('/home-dashboard');
+    expect(router.push).toHaveBeenCalledWith('/mandatory-details');
   });
 
   it('login.tsx: handleLogin should show error on invalid credentials', async () => {

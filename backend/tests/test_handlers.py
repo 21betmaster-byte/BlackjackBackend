@@ -7,50 +7,49 @@ import boto3
 from datetime import datetime, timedelta
 from jose import jwt # Explicitly import jwt from jose
 
-# Mock environment variables before importing handlers
-@pytest.fixture(autouse=True)
-def mock_env_vars():
+@pytest.fixture
+def dynamodb_tables():
     with patch.dict(os.environ, {
         "USERS_TABLE": "TestUsersTable",
         "STATS_TABLE": "TestStatsTable",
-        "SECRET_KEY": "test-secret-key"
+        "SECRET_KEY": "test-secret-key",
+        "AWS_DEFAULT_REGION": "us-east-1",
+        "AWS_ACCESS_KEY_ID": "testing",
+        "AWS_SECRET_ACCESS_KEY": "testing",
     }):
-        # Import handlers AFTER environment variables are mocked
-        global auth_handlers, stats_handlers
-        from handlers import auth as auth_handlers
-        from handlers import stats as stats_handlers
-        # Reload handlers to ensure they pick up mocked env vars
-        from importlib import reload
-        reload(auth_handlers)
-        reload(stats_handlers)
-        yield
+        with mock_aws():
+            dynamodb = boto3.client("dynamodb", region_name="us-east-1")
 
-@pytest.fixture
-def dynamodb_tables():
-    with mock_aws():
-        dynamodb = boto3.client("dynamodb", region_name="us-east-1")
-        
-        # Create UsersTable
-        dynamodb.create_table(
-            TableName="TestUsersTable",
-            KeySchema=[{"AttributeName": "email", "KeyType": "HASH"}],
-            AttributeDefinitions=[{"AttributeName": "email", "AttributeType": "S"}],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        # Create StatsTable
-        dynamodb.create_table(
-            TableName="TestStatsTable",
-            KeySchema=[
-                {"AttributeName": "userId", "KeyType": "HASH"},
-                {"AttributeName": "timestamp", "KeyType": "RANGE"},
-            ],
-            AttributeDefinitions=[
-                {"AttributeName": "userId", "AttributeType": "S"},
-                {"AttributeName": "timestamp", "AttributeType": "S"},
-            ],
-            BillingMode="PAY_PER_REQUEST",
-        )
-        yield dynamodb
+            # Create UsersTable
+            dynamodb.create_table(
+                TableName="TestUsersTable",
+                KeySchema=[{"AttributeName": "email", "KeyType": "HASH"}],
+                AttributeDefinitions=[{"AttributeName": "email", "AttributeType": "S"}],
+                BillingMode="PAY_PER_REQUEST",
+            )
+            # Create StatsTable
+            dynamodb.create_table(
+                TableName="TestStatsTable",
+                KeySchema=[
+                    {"AttributeName": "userId", "KeyType": "HASH"},
+                    {"AttributeName": "timestamp", "KeyType": "RANGE"},
+                ],
+                AttributeDefinitions=[
+                    {"AttributeName": "userId", "AttributeType": "S"},
+                    {"AttributeName": "timestamp", "AttributeType": "S"},
+                ],
+                BillingMode="PAY_PER_REQUEST",
+            )
+
+            # Reload handlers inside mock_aws so boto3 resources use moto
+            global auth_handlers, stats_handlers
+            from handlers import auth as auth_handlers
+            from handlers import stats as stats_handlers
+            from importlib import reload
+            reload(auth_handlers)
+            reload(stats_handlers)
+
+            yield dynamodb
 
 @pytest.fixture
 def mock_context():

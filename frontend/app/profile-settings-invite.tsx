@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -11,13 +11,13 @@ import {
   Switch,
   TextInput,
   Platform,
-  Animated,
 } from 'react-native';
 import * as ExpoClipboard from 'expo-clipboard';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 const ProfileSettingsInviteScreen = () => {
   const colorScheme = useColorScheme();
@@ -26,41 +26,20 @@ const ProfileSettingsInviteScreen = () => {
 
   const [darkMode, setDarkMode] = useState(darkTheme);
   const [haptics, setHaptics] = useState(true);
-  const [toastVisible, setToastVisible] = useState(false);
-  const toastOpacity = useRef(new Animated.Value(0)).current;
 
   const { logout } = useAuth();
+  const toast = useToast();
   const referralLink = 'betmaster21.com/ref/alexj';
 
   const copyToClipboard = async () => {
     await ExpoClipboard.setStringAsync(referralLink);
-    setToastVisible(true);
+    toast.show('Referral Link Copied!', 'success');
   };
 
   const handleLogout = async () => {
     await logout();
-    router.replace('/login');
+    router.replace('/signup');
   };
-
-  useEffect(() => {
-    if (toastVisible) {
-      Animated.sequence([
-        Animated.timing(toastOpacity, {
-          toValue: 1,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.delay(2000),
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setToastVisible(false);
-      });
-    }
-  }, [toastVisible, toastOpacity]);
 
   return (
     <SafeAreaView style={[styles.flex1, { backgroundColor: themeColors.background }]}>
@@ -131,7 +110,6 @@ const ProfileSettingsInviteScreen = () => {
         </ScrollView>
       </View>
       <SettingsBottomNav />
-      {toastVisible && <SuccessToast opacity={toastOpacity} />}
     </SafeAreaView>
   );
 };
@@ -174,14 +152,6 @@ const SettingsBottomNav = () => (
     </View>
 );
 
-const SuccessToast = ({ opacity }) => (
-    <Animated.View style={[styles.toastContainer, { opacity }]}>
-        <MaterialIcons name="check-circle" size={20} color={Colors.dark.background} />
-        <Text style={styles.toastText}>Referral Link Copied!</Text>
-    </Animated.View>
-);
-
-
 const styles = StyleSheet.create({
     flex1: { flex: 1 },
     container: { flex: 1 },
@@ -219,8 +189,6 @@ const styles = StyleSheet.create({
     bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 32 : 12, borderTopWidth: 1 },
     navButton: { alignItems: 'center', gap: 4 },
     navText: { fontSize: 10, fontWeight: '500'},
-    toastContainer: { position: 'absolute', top: 60, left: '50%', transform: [{translateX: -100}], backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 9999, flexDirection: 'row', alignItems: 'center', gap: 8, zIndex: 100, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8},
-    toastText: { color: Colors.dark.background, fontWeight: 'bold' },
 });
 
 export default ProfileSettingsInviteScreen;

@@ -6,19 +6,22 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ToastProvider } from '@/contexts/ToastContext';
 
 function RootNavigator() {
   const colorScheme = useColorScheme();
-  const { token, isLoading } = useAuth();
+  const { token, isLoading, mandatoryDetailsCompleted } = useAuth();
 
   useEffect(() => {
     if (isLoading) return;
-    if (token) {
+    if (token && mandatoryDetailsCompleted) {
       router.replace('/home-dashboard');
+    } else if (token && !mandatoryDetailsCompleted) {
+      router.replace('/mandatory-details');
     } else {
       router.replace('/signup');
     }
-  }, [token, isLoading]);
+  }, [token, isLoading, mandatoryDetailsCompleted]);
 
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
@@ -40,7 +43,9 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <RootNavigator />
+      <ToastProvider>
+        <RootNavigator />
+      </ToastProvider>
     </AuthProvider>
   );
 }

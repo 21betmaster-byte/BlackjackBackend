@@ -10,7 +10,7 @@ import {
   Image,
   ImageBackground,
   Platform,
-  Alert, // Added Alert
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
@@ -18,25 +18,29 @@ import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 
 const HomeDashboardScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
 
   const { token: authToken } = useAuth();
+  const toast = useToast();
+  const [savingStats, setSavingStats] = useState(false);
 
   const handleSaveMockStats = async () => {
     if (!authToken) {
-      Alert.alert('Error', 'No authentication token found. Please log in.');
+      toast.show('No authentication token found. Please log in.', 'error');
       return;
     }
 
     try {
+      setSavingStats(true);
       const response = await axios.post(
         `${API_URL}/stats`,
         {
-          result: Math.random() > 0.5 ? 'win' : 'loss', // Random win/loss
-          mistakes: Math.floor(Math.random() * 3), // 0-2 mistakes
+          result: Math.random() > 0.5 ? 'win' : 'loss',
+          mistakes: Math.floor(Math.random() * 3),
         },
         {
           headers: {
@@ -45,16 +49,18 @@ const HomeDashboardScreen = () => {
         }
       );
       if (response.data.status === 'saved') {
-        Alert.alert('Success', 'Mock game stats saved successfully!');
+        toast.show('Mock game stats saved successfully!', 'success');
         console.log('Saved stats:', response.data);
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
-        Alert.alert('Error', `Failed to save stats: ${error.response.data.detail || error.message}`);
+        toast.show(`Failed to save stats: ${error.response.data.detail || error.message}`, 'error');
       } else {
-        Alert.alert('Error', 'Network error or unexpected issue when saving stats.');
+        toast.show('Network error or unexpected issue when saving stats.', 'error');
       }
       console.error('Save stats error:', error);
+    } finally {
+      setSavingStats(false);
     }
   };
 
@@ -156,8 +162,16 @@ const HomeDashboardScreen = () => {
           </View>
            {/* New button to explicitly save mock stats */}
            <View style={{ padding: 16 }}>
-            <TouchableOpacity style={styles.primaryButton} onPress={handleSaveMockStats}>
-              <Text style={styles.primaryButtonText}>Save Mock Game Stats (for testing)</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, savingStats && { opacity: 0.6 }]}
+              onPress={handleSaveMockStats}
+              disabled={savingStats}
+            >
+              {savingStats ? (
+                <ActivityIndicator color={Colors.dark.background} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Save Mock Game Stats (for testing)</Text>
+              )}
             </TouchableOpacity>
           </View>
         </ScrollView>

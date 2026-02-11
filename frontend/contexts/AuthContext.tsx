@@ -2,19 +2,24 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const AUTH_TOKEN_KEY = 'auth_token';
+const MANDATORY_DETAILS_KEY = 'mandatory_details_completed';
 
 interface AuthContextType {
   token: string | null;
   isLoading: boolean;
+  mandatoryDetailsCompleted: boolean;
   login: (token: string) => Promise<void>;
   logout: () => Promise<void>;
+  setMandatoryDetailsCompleted: (completed: boolean) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
   token: null,
   isLoading: true,
+  mandatoryDetailsCompleted: false,
   login: async () => {},
   logout: async () => {},
+  setMandatoryDetailsCompleted: async () => {},
 });
 
 export const useAuth = () => useContext(AuthContext);
@@ -22,11 +27,18 @@ export const useAuth = () => useContext(AuthContext);
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [mandatoryDetailsCompleted, setMandatoryDetailsCompletedState] = useState(false);
 
   useEffect(() => {
-    AsyncStorage.getItem(AUTH_TOKEN_KEY).then((storedToken) => {
+    Promise.all([
+      AsyncStorage.getItem(AUTH_TOKEN_KEY),
+      AsyncStorage.getItem(MANDATORY_DETAILS_KEY),
+    ]).then(([storedToken, storedMandatory]) => {
       if (storedToken) {
         setToken(storedToken);
+      }
+      if (storedMandatory === 'true') {
+        setMandatoryDetailsCompletedState(true);
       }
       setIsLoading(false);
     });
@@ -38,12 +50,18 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const logout = async () => {
-    await AsyncStorage.removeItem(AUTH_TOKEN_KEY);
+    await AsyncStorage.multiRemove([AUTH_TOKEN_KEY, MANDATORY_DETAILS_KEY]);
     setToken(null);
+    setMandatoryDetailsCompletedState(false);
+  };
+
+  const setMandatoryDetailsCompleted = async (completed: boolean) => {
+    await AsyncStorage.setItem(MANDATORY_DETAILS_KEY, String(completed));
+    setMandatoryDetailsCompletedState(completed);
   };
 
   return (
-    <AuthContext.Provider value={{ token, isLoading, login, logout }}>
+    <AuthContext.Provider value={{ token, isLoading, mandatoryDetailsCompleted, login, logout, setMandatoryDetailsCompleted }}>
       {children}
     </AuthContext.Provider>
   );

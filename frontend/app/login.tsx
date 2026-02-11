@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   useColorScheme,
   Image,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -31,12 +32,14 @@ const LoginScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
 
-  const { login } = useAuth();
+  const { login, setMandatoryDetailsCompleted } = useAuth();
+  const toast = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const selectedFlag = LANGUAGES.find(l => l.code === selectedLanguage)?.flag ?? '🇬🇧';
 
@@ -57,6 +60,7 @@ const LoginScreen = () => {
 
   const fetchGoogleUserAndAuth = async (accessToken: string) => {
     try {
+      setLoading(true);
       const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -70,36 +74,47 @@ const LoginScreen = () => {
 
       if (authResponse.data.access_token) {
         await login(authResponse.data.access_token);
-        router.push('/mandatory-details');
+        if (authResponse.data.mandatory_details_completed) {
+          await setMandatoryDetailsCompleted(true);
+        }
+        // _layout.tsx useEffect handles navigation based on auth state
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+      toast.show('Google Sign-In failed. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleLogin = async () => {
     try {
+      setLoading(true);
       const response = await axios.post(`${API_URL}/login`, {
         email,
         password,
       });
       if (response.data.access_token) {
         await login(response.data.access_token);
-        Alert.alert('Success', 'Logged in successfully!');
-        router.push('/mandatory-details');
+        if (response.data.mandatory_details_completed) {
+          await setMandatoryDetailsCompleted(true);
+        }
+        toast.show('Logged in successfully!', 'success');
+        // _layout.tsx useEffect handles navigation based on auth state
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.status === 401) {
-          Alert.alert('Error', 'Invalid credentials. Please try again.');
+          toast.show('Invalid credentials. Please try again.', 'error');
         } else {
-          Alert.alert('Error', 'An unexpected error occurred during login.');
+          toast.show('An unexpected error occurred during login.', 'error');
         }
       } else {
-        Alert.alert('Error', 'Network error or unexpected issue.');
+        toast.show('Network error or unexpected issue.', 'error');
       }
       console.error('Login error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -179,6 +194,7 @@ const LoginScreen = () => {
                 },
               ]}
               onPress={handleGoogleSignIn}
+              disabled={loading}
             >
               <Image
                 source={{
@@ -259,8 +275,16 @@ const LoginScreen = () => {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={handleLogin}>
-              <Text style={styles.primaryButtonText}>Log In</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && { opacity: 0.6 }]}
+              onPress={handleLogin}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.dark.background} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Log In</Text>
+              )}
             </TouchableOpacity>
           </View>
 

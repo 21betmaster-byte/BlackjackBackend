@@ -229,3 +229,130 @@ def test_save_stats_invalid_body(dynamodb_tables, mock_context):
     assert response["statusCode"] == 400
     body = json.loads(response["body"])
     assert body["detail"] == "Invalid stats data."
+
+
+# --- Tests for mandatory details ---
+
+def _signup_and_login(mock_context, email="mandtest@example.com", password="testpass123"):
+    """Helper: signup a user, login, return (access_token, email)."""
+    auth_handlers.signup(
+        {"body": json.dumps({"email": email, "password": password})}, mock_context
+    )
+    login_resp = auth_handlers.login(
+        {"body": json.dumps({"email": email, "password": password})}, mock_context
+    )
+    token = json.loads(login_resp["body"])["access_token"]
+    return token
+
+
+def test_login_returns_mandatory_details_completed_false_initially(dynamodb_tables, mock_context):
+    auth_handlers.signup(
+        {"body": json.dumps({"email": "mdc@example.com", "password": "pass123"})}, mock_context
+    )
+    resp = auth_handlers.login(
+        {"body": json.dumps({"email": "mdc@example.com", "password": "pass123"})}, mock_context
+    )
+    body = json.loads(resp["body"])
+    assert body["mandatory_details_completed"] is False
+
+
+def test_save_mandatory_details_success(dynamodb_tables, mock_context):
+    token = _signup_and_login(mock_context)
+    event = {
+        "headers": {"Authorization": f"Bearer {token}"},
+        "body": json.dumps({
+            "first_name": "John",
+            "last_name": "Doe",
+            "dob": "06 / 15 / 1990",
+            "country": "United States",
+        }),
+    }
+    resp = auth_handlers.save_mandatory_details(event, mock_context)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["status"] == "saved"
+
+
+def test_save_mandatory_details_missing_fields(dynamodb_tables, mock_context):
+    token = _signup_and_login(mock_context, email="missing@example.com")
+    event = {
+        "headers": {"Authorization": f"Bearer {token}"},
+        "body": json.dumps({
+            "first_name": "John",
+            "last_name": "",
+            "dob": "",
+            "country": "",
+        }),
+    }
+    resp = auth_handlers.save_mandatory_details(event, mock_context)
+    assert resp["statusCode"] == 400
+    body = json.loads(resp["body"])
+    assert "required" in body["detail"].lower()
+
+
+def test_save_mandatory_details_unauthorized(dynamodb_tables, mock_context):
+    event = {
+        "headers": {},
+        "body": json.dumps({
+            "first_name": "John",
+            "last_name": "Doe",
+            "dob": "06 / 15 / 1990",
+            "country": "United States",
+        }),
+    }
+    resp = auth_handlers.save_mandatory_details(event, mock_context)
+    assert resp["statusCode"] == 401
+
+
+def test_get_mandatory_details_after_save(dynamodb_tables, mock_context):
+    token = _signup_and_login(mock_context, email="getdetails@example.com")
+
+    # Save details first
+    save_event = {
+        "headers": {"Authorization": f"Bearer {token}"},
+        "body": json.dumps({
+            "first_name": "Jane",
+            "last_name": "Smith",
+            "dob": "12 / 25 / 1985",
+            "country": "Canada",
+        }),
+    }
+    auth_handlers.save_mandatory_details(save_event, mock_context)
+
+    # Now get them
+    get_event = {
+        "headers": {"Authorization": f"Bearer {token}"},
+    }
+    resp = auth_handlers.get_mandatory_details(get_event, mock_context)
+    assert resp["statusCode"] == 200
+    body = json.loads(resp["body"])
+    assert body["first_name"] == "Jane"
+    assert body["last_name"] == "Smith"
+    assert body["dob"] == "12 / 25 / 1985"
+    assert body["country"] == "Canada"
+    assert body["mandatory_details_completed"] is True
+
+
+def test_login_returns_mandatory_details_completed_true_after_save(dynamodb_tables, mock_context):
+    email = "afterflag@example.com"
+    password = "pass123"
+    token = _signup_and_login(mock_context, email=email, password=password)
+
+    # Save mandatory details
+    save_event = {
+        "headers": {"Authorization": f"Bearer {token}"},
+        "body": json.dumps({
+            "first_name": "Test",
+            "last_name": "User",
+            "dob": "01 / 01 / 2000",
+            "country": "India",
+        }),
+    }
+    auth_handlers.save_mandatory_details(save_event, mock_context)
+
+    # Login again — should now show completed=True
+    login_resp = auth_handlers.login(
+        {"body": json.dumps({"email": email, "password": password})}, mock_context
+    )
+    body = json.loads(login_resp["body"])
+    assert body["mandatory_details_completed"] is True

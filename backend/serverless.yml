@@ -8,6 +8,19 @@ provider:
   name: aws
   runtime: python3.9
   region: us-east-1 # You can change this to your preferred region
+  httpApi:
+    cors:
+      allowedOrigins:
+        - http://localhost:8081
+        - https://localhost:8081
+      allowedHeaders:
+        - Content-Type
+        - Authorization
+      allowedMethods:
+        - POST
+        - GET
+        - PUT
+        - OPTIONS
   iam:
     role:
       statements:
@@ -42,6 +55,18 @@ functions:
       - httpApi:
           path: /google-auth
           method: post
+  saveMandatoryDetails:
+    handler: handlers/auth.save_mandatory_details
+    events:
+      - httpApi:
+          path: /mandatory-details
+          method: put
+  getMandatoryDetails:
+    handler: handlers/auth.get_mandatory_details
+    events:
+      - httpApi:
+          path: /mandatory-details
+          method: get
   saveStats:
     handler: handlers/stats.save
     events:
@@ -85,7 +110,14 @@ resources:
             KeyType: "RANGE"
         BillingMode: "PAY_PER_REQUEST"
 
+plugins:
+  - serverless-python-requirements
+
 custom:
   pythonRequirements:
     dockerizePip: false
     pythonBin: python3
+    pipCmdExtraArgs:
+      - --platform
+      - manylinux2014_x86_64
+      - --only-binary=:all:

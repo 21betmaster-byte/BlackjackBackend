@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -9,31 +9,179 @@ import {
   ScrollView,
   useColorScheme,
   Platform,
+  ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
+import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { API_URL } from '../config';
+import CountryPicker from '../components/ui/CountryPicker';
+import { validateDob, parseDobToDate, formatDateToDob, formatDateToISO } from '../utils/dob-validation';
+
+// Only import DateTimePicker on native platforms
+let DateTimePicker: any = null;
+if (Platform.OS !== 'web') {
+  DateTimePicker = require('@react-native-community/datetimepicker').default;
+}
 
 const MandatoryDetailsScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
+  const { token, setMandatoryDetailsCompleted } = useAuth();
+  const toast = useToast();
 
-  const [firstName, setFirstName] = useState('Alex');
+  const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [dob, setDob] = useState('');
   const [country, setCountry] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [dobTouched, setDobTouched] = useState(false);
+  const webDateRef = useRef<HTMLInputElement | null>(null);
 
-  const lastNameError = lastName.trim() === ''; // Simulate error
-  const countryError = country.trim() === ''; // Simulate error
+  const firstNameError = firstName.trim() === '';
+  const lastNameError = lastName.trim() === '';
+  const countryError = country.trim() === '';
 
-  const handleContinue = () => {
-    console.log('Continue with mandatory details:', { firstName, lastName, dob, country });
-    router.push('/home-dashboard');
+  const dobValidationError = useMemo(() => validateDob(dob), [dob]);
+  const dobHasError = dobTouched && (dobValidationError !== null || dob.trim() === '');
+
+  const handleDobChange = (text: string) => {
+    setDobTouched(true);
+    const digits = text.replace(/\D/g, '').slice(0, 8);
+
+    let formatted = '';
+    if (digits.length <= 2) {
+      formatted = digits;
+    } else if (digits.length <= 4) {
+      formatted = `${digits.slice(0, 2)} / ${digits.slice(2)}`;
+    } else {
+      formatted = `${digits.slice(0, 2)} / ${digits.slice(2, 4)} / ${digits.slice(4)}`;
+    }
+    setDob(formatted);
+  };
+
+  const pickerDate = useMemo(() => {
+    const parsed = parseDobToDate(dob);
+    if (parsed && parsed <= new Date()) return parsed;
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d;
+  }, [dob]);
+
+  const eighteenYearsAgo = useMemo(() => {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() - 18);
+    return d;
+  }, []);
+
+  const handleDatePickerChange = (event: any, selectedDate?: Date) => {
+    if (Platform.OS === 'android') {
+      setShowDatePicker(false);
+    }
+    if (event.type === 'dismissed') return;
+    if (selectedDate) {
+      setDobTouched(true);
+      setDob(formatDateToDob(selectedDate));
+    }
+  };
+
+  const handlePickerDone = () => {
+    setShowDatePicker(false);
+  };
+
+  const openDatePicker = () => {
+    if (Platform.OS === 'web') {
+      // On web, click the hidden native date input
+      webDateRef.current?.showPicker?.();
+      webDateRef.current?.click();
+    } else {
+      setShowDatePicker(true);
+    }
+  };
+
+  const handleWebDateChange = (e: any) => {
+    const value = e.target?.value || e.nativeEvent?.text;
+    if (value) {
+      const [yyyy, mm, dd] = value.split('-');
+      setDobTouched(true);
+      setDob(`${mm} / ${dd} / ${yyyy}`);
+    }
+  };
+
+  const handleContinue = async () => {
+    if (firstName.trim() === '') {
+      toast.show('First name is required.', 'error');
+      return;
+    }
+    if (lastName.trim() === '') {
+      toast.show('Last name is required.', 'error');
+      return;
+    }
+    if (dob.trim() === '') {
+      setDobTouched(true);
+      toast.show('Date of birth is required.', 'error');
+      return;
+    }
+    if (dobValidationError) {
+      toast.show(dobValidationError, 'error');
+      return;
+    }
+    if (country.trim() === '') {
+      toast.show('Country is required.', 'error');
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // Save mandatory details to backend
+      const response = await fetch(`${API_URL}/mandatory-details`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
+          first_name: firstName.trim(),
+          last_name: lastName.trim(),
+          dob: dob.trim(),
+          country: country.trim(),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Failed to save details.');
+      }
+
+      await setMandatoryDetailsCompleted(true);
+      console.log('Mandatory details saved:', { firstName, lastName, dob, country });
+      router.push('/home-dashboard');
+    } catch (error: any) {
+      toast.show(error.message || 'Something went wrong. Please try again.', 'error');
+      console.error('Mandatory details error:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleBack = () => {
     router.back();
   };
+
+  const isDark = colorScheme === 'dark';
+
+  // Compute web date input value from current dob
+  const webDateValue = useMemo(() => {
+    const parsed = parseDobToDate(dob);
+    return parsed ? formatDateToISO(parsed) : '';
+  }, [dob]);
+
+  const maxWebDate = useMemo(() => formatDateToISO(eighteenYearsAgo), [eighteenYearsAgo]);
 
   return (
     <SafeAreaView style={[styles.flex1, { backgroundColor: themeColors.background }]}>
@@ -43,8 +191,8 @@ const MandatoryDetailsScreen = () => {
           style={[
             styles.header,
             {
-              backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.8)' : 'rgba(246, 248, 248, 0.8)',
-              borderColor: colorScheme === 'dark' ? '#1e293b' : '#e2e8f0',
+              backgroundColor: isDark ? 'rgba(16, 34, 32, 0.8)' : 'rgba(246, 248, 248, 0.8)',
+              borderColor: isDark ? '#1e293b' : '#e2e8f0',
             },
           ]}
         >
@@ -60,7 +208,7 @@ const MandatoryDetailsScreen = () => {
             <View
               style={[
                 styles.progressBarBackground,
-                { backgroundColor: colorScheme === 'dark' ? '#1e293b' : '#e2e8f0' },
+                { backgroundColor: isDark ? '#1e293b' : '#e2e8f0' },
               ]}
             >
               <View style={[styles.progressBarFill, { backgroundColor: Colors.primary, width: '40%' }]} />
@@ -76,7 +224,7 @@ const MandatoryDetailsScreen = () => {
           {/* Header Section */}
           <View style={styles.mb8}>
             <Text style={[styles.h2, { color: themeColors.text }]}>Mandatory Details</Text>
-            <Text style={[styles.p, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+            <Text style={[styles.p, { color: isDark ? '#94a3b8' : '#64748b' }]}>
               Help us secure your account. These details are required for legal compliance and casino safety training.
             </Text>
           </View>
@@ -85,28 +233,38 @@ const MandatoryDetailsScreen = () => {
           <View style={styles.form}>
             {/* First Name Field */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
                 First Name
               </Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    borderColor: colorScheme === 'dark' ? '#1e293b' : '#e2e8f0',
-                    backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.5)' : 'white',
-                    color: themeColors.text,
-                  },
-                ]}
-                placeholder="Enter your first name"
-                placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                value={firstName}
-                onChangeText={setFirstName}
-              />
+              <View style={styles.relativeInput}>
+                <TextInput
+                  style={[
+                    styles.textInput,
+                    firstNameError && styles.textInputError,
+                    {
+                      backgroundColor: firstNameError
+                        ? (isDark ? 'rgba(255, 77, 77, 0.1)' : 'rgba(255, 77, 77, 0.05)')
+                        : (isDark ? 'rgba(16, 34, 32, 0.5)' : 'white'),
+                      color: themeColors.text,
+                    },
+                  ]}
+                  placeholder="Enter your first name"
+                  placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
+                  value={firstName}
+                  onChangeText={setFirstName}
+                />
+                {firstNameError && (
+                  <MaterialIcons name="error" size={24} color={Colors.error} style={styles.inputIconRight} />
+                )}
+              </View>
+              {firstNameError && (
+                <Text style={[styles.errorMessage, { color: Colors.error }]}>This field is mandatory</Text>
+              )}
             </View>
 
-            {/* Last Name Field (Error State) */}
+            {/* Last Name Field */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
                 Last Name
               </Text>
               <View style={styles.relativeInput}>
@@ -115,12 +273,12 @@ const MandatoryDetailsScreen = () => {
                     styles.textInput,
                     lastNameError && styles.textInputError,
                     {
-                      backgroundColor: colorScheme === 'dark' ? 'rgba(255, 77, 77, 0.1)' : 'rgba(255, 77, 77, 0.05)',
+                      backgroundColor: isDark ? 'rgba(255, 77, 77, 0.1)' : 'rgba(255, 77, 77, 0.05)',
                       color: themeColors.text,
                     },
                   ]}
                   placeholder="Enter your last name"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                  placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
                   value={lastName}
                   onChangeText={setLastName}
                 />
@@ -135,55 +293,135 @@ const MandatoryDetailsScreen = () => {
 
             {/* Date of Birth Field */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
                 Date of Birth
               </Text>
-              <TouchableOpacity style={styles.relativeInput} onPress={() => console.log('Open Date Picker')}>
+              <View style={styles.relativeInput}>
                 <TextInput
                   style={[
                     styles.textInput,
+                    dobHasError && styles.textInputError,
                     {
-                      borderColor: colorScheme === 'dark' ? '#1e293b' : '#e2e8f0',
-                      backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.5)' : 'white',
+                      borderColor: dobHasError
+                        ? Colors.error
+                        : (isDark ? '#1e293b' : '#e2e8f0'),
+                      backgroundColor: dobHasError
+                        ? (isDark ? 'rgba(255, 77, 77, 0.1)' : 'rgba(255, 77, 77, 0.05)')
+                        : (isDark ? 'rgba(16, 34, 32, 0.5)' : 'white'),
                       color: themeColors.text,
+                      paddingRight: 56,
                     },
                   ]}
                   placeholder="MM / DD / YYYY"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                  placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
                   value={dob}
-                  onChangeText={setDob}
-                  editable={false} // Make it non-editable to open date picker on press
+                  onChangeText={handleDobChange}
+                  onBlur={() => setDobTouched(true)}
+                  keyboardType="number-pad"
+                  maxLength={14}
                 />
-                <MaterialIcons name="calendar-today" size={24} color={'#94a3b8'} style={styles.inputIconRight} />
-              </TouchableOpacity>
-              <Text style={[styles.dobHint, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-                You must be at least 18 years old.
-              </Text>
+                {dobHasError ? (
+                  <MaterialIcons name="error" size={24} color={Colors.error} style={styles.inputIconRight} />
+                ) : (
+                  <TouchableOpacity
+                    style={styles.inputIconRight}
+                    onPress={openDatePicker}
+                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+                  >
+                    <MaterialIcons name="calendar-today" size={24} color="#94a3b8" />
+                  </TouchableOpacity>
+                )}
+
+                {/* Hidden native date input for web */}
+                {Platform.OS === 'web' && (
+                  <input
+                    ref={webDateRef as any}
+                    type="date"
+                    value={webDateValue}
+                    max={maxWebDate}
+                    min="1900-01-01"
+                    onChange={handleWebDateChange}
+                    style={{
+                      position: 'absolute',
+                      right: 16,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      opacity: 0,
+                      width: 32,
+                      height: 32,
+                      cursor: 'pointer',
+                    }}
+                    tabIndex={-1}
+                  />
+                )}
+              </View>
+              {dobTouched && dobValidationError ? (
+                <Text style={[styles.errorMessage, { color: Colors.error }]}>{dobValidationError}</Text>
+              ) : (
+                <Text style={[styles.dobHint, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                  You must be at least 18 years old.
+                </Text>
+              )}
             </View>
 
-            {/* Country Selection (Error State) */}
+            {/* Date Picker — Native only (iOS Modal / Android Dialog) */}
+            {Platform.OS === 'ios' && showDatePicker && DateTimePicker && (
+              <Modal transparent animationType="slide">
+                <View style={styles.modalOverlay}>
+                  <View
+                    style={[
+                      styles.modalContent,
+                      { backgroundColor: isDark ? '#1e293b' : 'white' },
+                    ]}
+                  >
+                    <View style={styles.modalHeader}>
+                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
+                        <Text style={[styles.modalButton, { color: isDark ? '#94a3b8' : '#64748b' }]}>
+                          Cancel
+                        </Text>
+                      </TouchableOpacity>
+                      <Text style={[styles.modalTitle, { color: themeColors.text }]}>
+                        Date of Birth
+                      </Text>
+                      <TouchableOpacity onPress={handlePickerDone}>
+                        <Text style={[styles.modalButton, { color: Colors.primary }]}>Done</Text>
+                      </TouchableOpacity>
+                    </View>
+                    <DateTimePicker
+                      value={pickerDate}
+                      mode="date"
+                      display="spinner"
+                      onChange={handleDatePickerChange}
+                      maximumDate={eighteenYearsAgo}
+                      minimumDate={new Date(1900, 0, 1)}
+                      textColor={themeColors.text}
+                    />
+                  </View>
+                </View>
+              </Modal>
+            )}
+            {Platform.OS === 'android' && showDatePicker && DateTimePicker && (
+              <DateTimePicker
+                value={pickerDate}
+                mode="date"
+                display="default"
+                onChange={handleDatePickerChange}
+                maximumDate={eighteenYearsAgo}
+                minimumDate={new Date(1900, 0, 1)}
+              />
+            )}
+
+            {/* Country Selection */}
             <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
+              <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
                 Country
               </Text>
-              <TouchableOpacity style={styles.relativeInput} onPress={() => console.log('Open Country Picker')}>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    countryError && styles.textInputError,
-                    {
-                      backgroundColor: colorScheme === 'dark' ? 'rgba(255, 77, 77, 0.1)' : 'rgba(255, 77, 77, 0.05)',
-                      color: country ? themeColors.text : (colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'), // Placeholder color
-                    },
-                  ]}
-                  placeholder="Select your country"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                  value={country}
-                  onChangeText={setCountry}
-                  editable={false} // Make it non-editable to open picker on press
-                />
-                <MaterialIcons name="expand-more" size={24} color={'#94a3b8'} style={styles.inputIconRight} />
-              </TouchableOpacity>
+              <CountryPicker
+                value={country}
+                onSelect={setCountry}
+                error={countryError}
+                colorScheme={colorScheme}
+              />
               {countryError && (
                 <Text style={[styles.errorMessage, { color: Colors.error }]}>This field is mandatory</Text>
               )}
@@ -191,7 +429,7 @@ const MandatoryDetailsScreen = () => {
 
             {/* Privacy Consent Note */}
             <View style={styles.privacyNoteContainer}>
-              <Text style={[styles.privacyNoteText, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+              <Text style={[styles.privacyNoteText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
                 By continuing, you agree to our{' '}
                 <Text style={[styles.linkText, { color: Colors.primary }]} onPress={() => console.log('Privacy Policy')}>
                   Privacy Policy
@@ -207,14 +445,24 @@ const MandatoryDetailsScreen = () => {
           style={[
             styles.footer,
             {
-              backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.9)' : 'rgba(246, 248, 248, 0.9)',
-              borderColor: colorScheme === 'dark' ? '#1e293b' : '#e2e8f0',
+              backgroundColor: isDark ? 'rgba(16, 34, 32, 0.9)' : 'rgba(246, 248, 248, 0.9)',
+              borderColor: isDark ? '#1e293b' : '#e2e8f0',
             },
           ]}
         >
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <Text style={styles.continueButtonText}>Continue</Text>
-            <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
+          <TouchableOpacity
+            style={[styles.continueButton, loading && { opacity: 0.6 }]}
+            onPress={handleContinue}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color={Colors.dark.background} />
+            ) : (
+              <>
+                <Text style={styles.continueButtonText}>Continue</Text>
+                <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
+              </>
+            )}
           </TouchableOpacity>
         </View>
 
@@ -237,11 +485,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   header: {
-    paddingTop: Platform.OS === 'android' ? 24 : 0, // Adjust for Android status bar
+    paddingTop: Platform.OS === 'android' ? 24 : 0,
     paddingBottom: 16,
     borderBottomWidth: 1,
     zIndex: 10,
-    backgroundColor: 'transparent', // Will be set by inline style
+    backgroundColor: 'transparent',
   },
   headerContent: {
     flexDirection: 'row',
@@ -260,7 +508,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   spacer: {
-    width: 40, // To balance the back button
+    width: 40,
   },
   progressBarContainer: {
     paddingHorizontal: 24,
@@ -278,7 +526,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingTop: 32,
     paddingBottom: 48,
-    maxWidth: 600, // max-w-lg
+    maxWidth: 600,
     alignSelf: 'center',
     width: '100%',
   },
@@ -332,12 +580,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    marginTop: 4, // Adjust spacing for error message
+    marginTop: 4,
   },
   dobHint: {
     fontSize: 12,
     paddingHorizontal: 16,
     marginTop: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+  },
+  modalContent: {
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#334155',
+  },
+  modalTitle: {
+    fontSize: 17,
+    fontWeight: '600',
+  },
+  modalButton: {
+    fontSize: 17,
+    fontWeight: '600',
   },
   privacyNoteContainer: {
     paddingVertical: 16,
@@ -378,10 +653,9 @@ const styles = StyleSheet.create({
   },
   verificationBadge: {
     position: 'absolute',
-    bottom: 128, // bottom-32
-    right: 24, // right-6
+    bottom: 128,
+    right: 24,
     opacity: 0.1,
-    // pointerEvents: 'none', // Not directly applicable in RN style, handled by parent touchability
   },
 });
 

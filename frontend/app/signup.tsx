@@ -8,7 +8,7 @@ import {
   TouchableOpacity,
   useColorScheme,
   Image,
-  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
@@ -16,6 +16,7 @@ import { router } from 'expo-router';
 import axios from 'axios';
 import { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
 
@@ -30,13 +31,15 @@ const LANGUAGES = [
 const SignUpScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
-  const { login } = useAuth();
+  const { login, setMandatoryDetailsCompleted } = useAuth();
+  const toast = useToast();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const selectedFlag = LANGUAGES.find(l => l.code === selectedLanguage)?.flag ?? '🇬🇧';
 
@@ -57,6 +60,7 @@ const SignUpScreen = () => {
 
   const fetchGoogleUserAndAuth = async (accessToken: string) => {
     try {
+      setLoading(true);
       const userInfoResponse = await fetch('https://www.googleapis.com/userinfo/v2/me', {
         headers: { Authorization: `Bearer ${accessToken}` },
       });
@@ -70,35 +74,43 @@ const SignUpScreen = () => {
 
       if (authResponse.data.access_token) {
         await login(authResponse.data.access_token);
-        router.push('/mandatory-details');
+        if (authResponse.data.mandatory_details_completed) {
+          await setMandatoryDetailsCompleted(true);
+        }
+        // _layout.tsx useEffect handles navigation based on auth state
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      Alert.alert('Error', 'Google Sign-In failed. Please try again.');
+      toast.show('Google Sign-In failed. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSignUp = async () => {
     try {
+      setLoading(true);
       const response = await axios.post(`${API_URL}/signup`, {
         email,
         password,
       });
       if (response.data.status === 'success') {
-        Alert.alert('Success', 'Account created successfully! Please log in.');
+        toast.show('Account created successfully!', 'success');
         router.push('/login');
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.status === 400) {
-          Alert.alert('Error', error.response.data.detail);
+          toast.show(error.response.data.detail, 'error');
         } else {
-          Alert.alert('Error', 'An unexpected error occurred during signup.');
+          toast.show('An unexpected error occurred during signup.', 'error');
         }
       } else {
-        Alert.alert('Error', 'Network error or unexpected issue.');
+        toast.show('Network error or unexpected issue.', 'error');
       }
       console.error('Signup error:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -179,6 +191,7 @@ const SignUpScreen = () => {
                 },
               ]}
               onPress={handleGoogleSignIn}
+              disabled={loading}
             >
               {/* Simplified Google Icon as a placeholder */}
               <Image
@@ -260,8 +273,16 @@ const SignUpScreen = () => {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.primaryButton} onPress={handleSignUp}>
-              <Text style={styles.primaryButtonText}>Create Account</Text>
+            <TouchableOpacity
+              style={[styles.primaryButton, loading && { opacity: 0.6 }]}
+              onPress={handleSignUp}
+              disabled={loading}
+            >
+              {loading ? (
+                <ActivityIndicator color={Colors.dark.background} />
+              ) : (
+                <Text style={styles.primaryButtonText}>Create Account</Text>
+              )}
             </TouchableOpacity>
           </View>
 
@@ -329,8 +350,8 @@ const styles = StyleSheet.create({
   },
   heroContainer: {
     width: '100%',
-    paddingHorizontal: 0, // @[480px]:px-4 is ignored for RN
-    paddingVertical: 0, // @[480px]:py-3 is ignored for RN
+    paddingHorizontal: 0,
+    paddingVertical: 0,
   },
   heroBackground: {
     width: '100%',
@@ -339,8 +360,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     minHeight: 220,
     borderBottomWidth: 1,
-    borderColor: 'rgba(17, 212, 196, 0.1)', // primary/10
-    // felt-texture background-image is complex for RN, using solid color
+    borderColor: 'rgba(17, 212, 196, 0.1)',
   },
   casinoElements: {
     flexDirection: 'row',
@@ -353,8 +373,8 @@ const styles = StyleSheet.create({
     padding: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(17, 212, 196, 0.3)', // primary/30
-    backgroundColor: 'rgba(17, 212, 196, 0.2)', // primary/20
+    borderColor: 'rgba(17, 212, 196, 0.3)',
+    backgroundColor: 'rgba(17, 212, 196, 0.2)',
   },
   heroTitle: {
     fontSize: 32,
@@ -375,8 +395,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 24,
     paddingVertical: 32,
     gap: 24,
-    maxWidth: 400, // max-w-md
-    alignSelf: 'center', // mx-auto
+    maxWidth: 400,
+    alignSelf: 'center',
     width: '100%',
   },
   socialLoginContainer: {
@@ -387,7 +407,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     minWidth: 84,
     height: 56,
-    borderRadius: 9999, // rounded-full
+    borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
@@ -435,7 +455,7 @@ const styles = StyleSheet.create({
   textInput: {
     height: 56,
     width: '100%',
-    borderRadius: 9999, // rounded-full
+    borderRadius: 9999,
     borderWidth: 1,
     paddingHorizontal: 24,
     fontSize: 16,
@@ -446,18 +466,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   passwordTextInput: {
-    paddingRight: 60, // Make space for the visibility toggle
+    paddingRight: 60,
   },
   visibilityToggle: {
     position: 'absolute',
     right: 20,
-    padding: 4, // Make it easier to tap
+    padding: 4,
   },
   primaryButton: {
     marginTop: 16,
     height: 56,
     width: '100%',
-    borderRadius: 9999, // rounded-full
+    borderRadius: 9999,
     backgroundColor: Colors.primary,
     paddingHorizontal: 20,
     alignItems: 'center',
@@ -466,10 +486,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.2,
     shadowRadius: 10,
-    elevation: 5, // Android shadow
+    elevation: 5,
   },
   primaryButtonText: {
-    color: Colors.dark.background, // text-background-dark (from HTML)
+    color: Colors.dark.background,
     fontSize: 18,
     fontWeight: 'bold',
   },

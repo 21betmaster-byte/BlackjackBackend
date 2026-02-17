@@ -7,11 +7,11 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  useColorScheme,
   Platform,
   ActivityIndicator,
   Modal,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
@@ -138,12 +138,18 @@ const MandatoryDetailsScreen = () => {
     try {
       setLoading(true);
 
+      if (!token) {
+        toast.show('Session expired. Please log in again.', 'error');
+        router.replace('/login');
+        return;
+      }
+
       // Save mandatory details to backend
       const response = await fetch(`${API_URL}/mandatory-details`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          'Authorization': `Bearer ${token}`,
         },
         body: JSON.stringify({
           first_name: firstName.trim(),
@@ -155,6 +161,11 @@ const MandatoryDetailsScreen = () => {
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          toast.show('Session expired. Please log in again.', 'error');
+          router.replace('/login');
+          return;
+        }
         throw new Error(errorData.detail || 'Failed to save details.');
       }
 

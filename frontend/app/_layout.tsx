@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
 
 function RootNavigator() {
@@ -26,6 +27,7 @@ function RootNavigator() {
   return (
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
+        <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="signup" options={{ headerShown: false }} />
         <Stack.Screen name="login" options={{ headerShown: false }} />
         <Stack.Screen name="mandatory-details" options={{ headerShown: false }} />
@@ -34,6 +36,7 @@ function RootNavigator() {
         <Stack.Screen name="profile-personal-details" options={{ headerShown: false }} />
         <Stack.Screen name="profile-settings-invite" options={{ headerShown: false }} />
         <Stack.Screen name="custom-app-loader" options={{ headerShown: false }} />
+        <Stack.Screen name="blackjack-game" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -43,9 +46,11 @@ function RootNavigator() {
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <ToastProvider>
-        <RootNavigator />
-      </ToastProvider>
+      <AppThemeProvider>
+        <ToastProvider>
+          <RootNavigator />
+        </ToastProvider>
+      </AppThemeProvider>
     </AuthProvider>
   );
 }

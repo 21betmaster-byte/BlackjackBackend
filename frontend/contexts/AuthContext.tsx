@@ -1,8 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-
-const AUTH_TOKEN_KEY = 'auth_token';
-const MANDATORY_DETAILS_KEY = 'mandatory_details_completed';
+import config from '../config';
 
 interface AuthContextType {
   token: string | null;
@@ -24,7 +22,16 @@ const AuthContext = createContext<AuthContextType>({
 
 export const useAuth = () => useContext(AuthContext);
 
-export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+type AuthProviderProps = {
+  children: React.ReactNode;
+  storageKeyPrefix?: string;
+};
+
+export const AuthProvider = ({ children, storageKeyPrefix }: AuthProviderProps) => {
+  const prefix = storageKeyPrefix ?? config.storage.keyPrefix;
+  const AUTH_TOKEN_KEY = `${prefix}_auth_token`;
+  const MANDATORY_DETAILS_KEY = `${prefix}_mandatory_details_completed`;
+
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [mandatoryDetailsCompleted, setMandatoryDetailsCompletedState] = useState(false);

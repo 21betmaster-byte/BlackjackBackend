@@ -6,12 +6,12 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  useColorScheme,
   Image,
   ImageBackground,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
@@ -82,7 +82,7 @@ const HomeDashboardScreen = () => {
         </View>
       </View>
       <View style={styles.learningCardButtons}>
-        <TouchableOpacity style={[styles.learningCardButton, { borderColor: colorScheme === 'dark' ? '#3b5452' : '#e2e8f0' }]}>
+        <TouchableOpacity style={[styles.learningCardButton, { borderColor: colorScheme === 'dark' ? '#3b5452' : '#e2e8f0' }]} onPress={() => router.push('/blackjack-game')}>
           <MaterialIcons name="videogame-asset" size={18} color={themeColors.text} />
           <Text style={[styles.learningCardButtonText, { color: themeColors.text }]}>Play Mode</Text>
         </TouchableOpacity>

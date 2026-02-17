@@ -13,6 +13,8 @@ provider:
       allowedOrigins:
         - http://localhost:8081
         - https://localhost:8081
+        - http://localhost:19006
+        - http://localhost:8082
       allowedHeaders:
         - Content-Type
         - Authorization
@@ -33,8 +35,19 @@ provider:
             - "dynamodb:UpdateItem"
             - "dynamodb:DeleteItem"
           Resource:
-            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/UsersTable"
-            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/StatsTable"
+            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.USERS_TABLE}"
+            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:provider.environment.STATS_TABLE}"
+        - Effect: "Allow"
+          Action:
+            - "ses:SendEmail"
+          Resource: "*"
+  environment:
+    APP_NAME: BetMaster21
+    SECRET_KEY: ${env:SECRET_KEY, 'your-super-secret-key'}
+    USERS_TABLE: UsersTable
+    STATS_TABLE: StatsTable
+    SES_REGION: us-east-1
+    SES_FROM_EMAIL: 21betmaster@gmail.com
 
 functions:
   signup:
@@ -67,6 +80,42 @@ functions:
       - httpApi:
           path: /mandatory-details
           method: get
+  getProfile:
+    handler: handlers/auth.get_profile
+    events:
+      - httpApi:
+          path: /user/profile
+          method: get
+  updateProfile:
+    handler: handlers/auth.update_profile
+    events:
+      - httpApi:
+          path: /user/profile
+          method: put
+  changePassword:
+    handler: handlers/auth.change_password
+    events:
+      - httpApi:
+          path: /user/password
+          method: put
+  forgotPassword:
+    handler: handlers/auth.forgot_password
+    events:
+      - httpApi:
+          path: /auth/forgot-password
+          method: post
+  verifyOtp:
+    handler: handlers/auth.verify_otp
+    events:
+      - httpApi:
+          path: /auth/verify-otp
+          method: post
+  resetPassword:
+    handler: handlers/auth.reset_password
+    events:
+      - httpApi:
+          path: /auth/reset-password
+          method: post
   saveStats:
     handler: handlers/stats.save
     events:
@@ -86,7 +135,7 @@ resources:
     UsersTable:
       Type: "AWS::DynamoDB::Table"
       Properties:
-        TableName: "UsersTable"
+        TableName: ${self:provider.environment.USERS_TABLE}
         AttributeDefinitions:
           - AttributeName: "email"
             AttributeType: "S"
@@ -97,7 +146,7 @@ resources:
     StatsTable:
       Type: "AWS::DynamoDB::Table"
       Properties:
-        TableName: "StatsTable"
+        TableName: ${self:provider.environment.STATS_TABLE}
         AttributeDefinitions:
           - AttributeName: "userId"
             AttributeType: "S"

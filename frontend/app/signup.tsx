@@ -6,15 +6,15 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   Image,
   ActivityIndicator,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import axios from 'axios';
-import { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
+import config, { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import * as Google from 'expo-auth-session/providers/google';
@@ -133,7 +133,7 @@ const SignUpScreen = () => {
               color={themeColors.text}
             />
           </TouchableOpacity>
-          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>BetMaster21</Text>
+          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
           <TouchableOpacity
             style={styles.languageButton}
             onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
@@ -173,7 +173,7 @@ const SignUpScreen = () => {
                 <MaterialIcons name="casino" size={50} color={Colors.primary} />
               </View>
             </View>
-            <Text style={[styles.heroTitle, { color: 'white' }]}>BetMaster21</Text>
+            <Text style={[styles.heroTitle, { color: 'white' }]}>{config.appName}</Text>
             <Text style={[styles.heroSubtitle, { color: Colors.primary }]}>Master Casino Table Games</Text>
           </View>
         </View>

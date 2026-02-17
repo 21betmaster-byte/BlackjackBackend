@@ -6,32 +6,33 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  useColorScheme,
   Platform,
   Switch,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
+import config from '../config';
 
 const LanguageThemeSetupScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
+  const { themePreference, setThemePreference } = useTheme();
 
   const [selectedLanguage, setSelectedLanguage] = useState('en');
-  const [selectedTheme, setSelectedTheme] = useState(colorScheme || 'dark'); // Default to dark as per HTML
+  const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark'>(
+    themePreference === 'system' ? (colorScheme || 'dark') : themePreference
+  );
   const [highContrastModeEnabled, setHighContrastModeEnabled] = useState(false);
 
   const handleBack = () => {
     router.back();
   };
 
-  const handleContinue = () => {
-    console.log('Continue to Training with preferences:', {
-      selectedLanguage,
-      selectedTheme,
-      highContrastModeEnabled,
-    });
+  const handleContinue = async () => {
+    await setThemePreference(selectedTheme);
     router.push('/home-dashboard');
   };
 
@@ -43,7 +44,7 @@ const LanguageThemeSetupScreen = () => {
           <TouchableOpacity style={styles.backButton} onPress={handleBack}>
             <MaterialIcons name="arrow-back-ios-new" size={24} color={themeColors.text} />
           </TouchableOpacity>
-          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>BetMaster21</Text>
+          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
         </View>
 
         {/* Main Content Scroll Area */}

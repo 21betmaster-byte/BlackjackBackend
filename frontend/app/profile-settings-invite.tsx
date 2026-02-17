@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   StyleSheet,
   SafeAreaView,
@@ -6,30 +6,46 @@ import {
   Text,
   TouchableOpacity,
   ScrollView,
-  useColorScheme,
   Image,
   Switch,
   TextInput,
   Platform,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useTheme } from '@/contexts/ThemeContext';
 import * as ExpoClipboard from 'expo-clipboard';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import axios from 'axios';
+import config, { API_URL } from '../config';
 
 const ProfileSettingsInviteScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   const darkTheme = colorScheme === 'dark';
+  const { isDark, setThemePreference } = useTheme();
 
-  const [darkMode, setDarkMode] = useState(darkTheme);
   const [haptics, setHaptics] = useState(true);
+  const [userName, setUserName] = useState('');
 
-  const { logout } = useAuth();
+  const { token, logout } = useAuth();
   const toast = useToast();
-  const referralLink = 'betmaster21.com/ref/alexj';
+  const referralLink = `${config.appName.toLowerCase()}.com/ref`;
+
+  useEffect(() => {
+    if (token) {
+      axios.get(`${API_URL}/user/profile`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((resp) => {
+          const data = resp.data;
+          const name = [data.first_name, data.last_name].filter(Boolean).join(' ');
+          setUserName(name || 'User');
+        })
+        .catch(() => setUserName('User'));
+    }
+  }, [token]);
 
   const copyToClipboard = async () => {
     await ExpoClipboard.setStringAsync(referralLink);
@@ -61,8 +77,19 @@ const ProfileSettingsInviteScreen = () => {
                 <MaterialIcons name="edit" size={16} color={Colors.dark.background} />
               </TouchableOpacity>
             </View>
-            <Text style={[styles.profileName, { color: themeColors.text }]}>Alex Johnson</Text>
-            <Text style={styles.profileStats}>Pro Tier • 12,450 XP</Text>
+            <Text style={[styles.profileName, { color: themeColors.text }]}>{userName}</Text>
+            <Text style={styles.profileStats}>{config.appName} Member</Text>
+          </View>
+
+          {/* Account Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Account</Text>
+            <View style={styles.sectionContent}>
+              <SettingsRow icon="person" title="Personal Details" isFirst
+                onPress={() => router.push('/profile-personal-details')} />
+              <SettingsRow icon="lock" title="Password & Security" isLast
+                onPress={() => router.push({ pathname: '/profile-personal-details', params: { tab: 'security' } })} />
+            </View>
           </View>
 
           {/* Preferences Section */}
@@ -70,7 +97,7 @@ const ProfileSettingsInviteScreen = () => {
             <Text style={styles.sectionTitle}>Preferences</Text>
             <View style={styles.sectionContent}>
                 <SettingsRow icon="translate" title="Language" value="English (US)" isFirst onPress={() => console.log('Language')} />
-                <SettingsRow icon="dark-mode" title="Dark Mode" isToggle value={darkMode} onValueChange={setDarkMode} />
+                <SettingsRow icon="dark-mode" title="Dark Mode" isToggle value={isDark} onValueChange={(val: boolean) => setThemePreference(val ? 'dark' : 'light')} />
                 <SettingsRow icon="vibration" title="Haptic Feedback" isToggle value={haptics} onValueChange={setHaptics} isLast />
             </View>
           </View>
@@ -101,6 +128,7 @@ const ProfileSettingsInviteScreen = () => {
           
           {/* Support Section */}
            <View style={[styles.section, {marginBottom: 100}]}>
+             <Text style={styles.sectionTitle}>Support</Text>
              <View style={styles.sectionContent}>
                  <SettingsRow icon="help" title="Help Center" isFirst onPress={() => console.log('Help Center')} />
                  <SettingsRow icon="logout" title="Logout" isLast isDestructive onPress={handleLogout} />

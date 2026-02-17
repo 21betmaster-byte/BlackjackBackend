@@ -4,12 +4,12 @@ import {
   SafeAreaView,
   View,
   Text,
-  useColorScheme,
   Animated,
   Easing,
   Platform,
   ImageBackground,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';

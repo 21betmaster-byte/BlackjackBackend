@@ -6,15 +6,18 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  useColorScheme,
   Image,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import axios from 'axios';
-import { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
+import config, { API_URL, GOOGLE_WEB_CLIENT_ID, GOOGLE_IOS_CLIENT_ID, GOOGLE_ANDROID_CLIENT_ID } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import * as Google from 'expo-auth-session/providers/google';
@@ -40,6 +43,17 @@ const LoginScreen = () => {
   const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  // Forgot Password state
+  const [forgotPasswordVisible, setForgotPasswordVisible] = useState(false);
+  const [forgotStep, setForgotStep] = useState<1 | 2 | 3>(1);
+  const [fpEmail, setFpEmail] = useState('');
+  const [fpOtp, setFpOtp] = useState('');
+  const [fpNewPassword, setFpNewPassword] = useState('');
+  const [fpConfirmPassword, setFpConfirmPassword] = useState('');
+  const [fpResetToken, setFpResetToken] = useState('');
+  const [fpLoading, setFpLoading] = useState(false);
+  const [fpShowPassword, setFpShowPassword] = useState(false);
 
   const selectedFlag = LANGUAGES.find(l => l.code === selectedLanguage)?.flag ?? '🇬🇧';
 
@@ -118,6 +132,93 @@ const LoginScreen = () => {
     }
   };
 
+  const openForgotPassword = () => {
+    setFpEmail(email); // Pre-fill with login email
+    setFpOtp('');
+    setFpNewPassword('');
+    setFpConfirmPassword('');
+    setFpResetToken('');
+    setForgotStep(1);
+    setForgotPasswordVisible(true);
+  };
+
+  const handleForgotPasswordSendOtp = async () => {
+    if (!fpEmail.trim()) {
+      toast.show('Please enter your email.', 'error');
+      return;
+    }
+    try {
+      setFpLoading(true);
+      const resp = await axios.post(`${API_URL}/auth/forgot-password`, { email: fpEmail.trim().toLowerCase() });
+      if (resp.data.dev_otp) {
+        // SES not configured — auto-fill OTP for dev/testing
+        setFpOtp(resp.data.dev_otp);
+        toast.show(`Dev OTP: ${resp.data.dev_otp}`, 'info');
+      } else {
+        toast.show('OTP sent to your email.', 'success');
+      }
+      setForgotStep(2);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 429) {
+        toast.show('Too many requests. Try again later.', 'error');
+      } else {
+        toast.show('Failed to send OTP.', 'error');
+      }
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (fpOtp.length !== 6) {
+      toast.show('Please enter the 6-digit OTP.', 'error');
+      return;
+    }
+    try {
+      setFpLoading(true);
+      const resp = await axios.post(`${API_URL}/auth/verify-otp`, {
+        email: fpEmail.trim().toLowerCase(),
+        otp: fpOtp,
+      });
+      setFpResetToken(resp.data.reset_token);
+      setForgotStep(3);
+    } catch (error) {
+      toast.show('Invalid or expired OTP.', 'error');
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
+  const handleResetPassword = async () => {
+    if (fpNewPassword.length < 8) {
+      toast.show('Password must be at least 8 characters.', 'error');
+      return;
+    }
+    if (fpNewPassword !== fpConfirmPassword) {
+      toast.show('Passwords do not match.', 'error');
+      return;
+    }
+    try {
+      setFpLoading(true);
+      const resp = await axios.post(`${API_URL}/auth/reset-password`, {
+        reset_token: fpResetToken,
+        new_password: fpNewPassword,
+      });
+      if (resp.data.access_token) {
+        await login(resp.data.access_token);
+        if (resp.data.mandatory_details_completed) {
+          await setMandatoryDetailsCompleted(true);
+        }
+        setForgotPasswordVisible(false);
+        toast.show('Password reset successful!', 'success');
+      }
+    } catch (error) {
+      toast.show('Failed to reset password.', 'error');
+    } finally {
+      setFpLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = () => {
     promptAsync({ windowFeatures: { popup: true, width: 500, height: 600 } });
   };
@@ -137,7 +238,7 @@ const LoginScreen = () => {
               color={themeColors.text}
             />
           </TouchableOpacity>
-          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>BetMaster21</Text>
+          <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
           <TouchableOpacity
             style={styles.languageButton}
             onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
@@ -176,7 +277,7 @@ const LoginScreen = () => {
                 <MaterialIcons name="casino" size={50} color={Colors.primary} />
               </View>
             </View>
-            <Text style={[styles.heroTitle, { color: 'white' }]}>BetMaster21</Text>
+            <Text style={[styles.heroTitle, { color: 'white' }]}>{config.appName}</Text>
             <Text style={[styles.heroSubtitle, { color: Colors.primary }]}>Login to Master Casino Table Games</Text>
           </View>
         </View>
@@ -275,6 +376,10 @@ const LoginScreen = () => {
               </View>
             </View>
 
+            <TouchableOpacity onPress={openForgotPassword} style={styles.forgotPasswordLink}>
+              <Text style={[styles.forgotPasswordText, { color: Colors.primary }]}>Forgot Password?</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={[styles.primaryButton, loading && { opacity: 0.6 }]}
               onPress={handleLogin}
@@ -315,6 +420,134 @@ const LoginScreen = () => {
         {/* Footer Safe Area Spacer */}
         <View style={styles.footerSpacer} />
       </View>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={forgotPasswordVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setForgotPasswordVisible(false)}
+      >
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
+          <View style={[styles.modalCard, { backgroundColor: colorScheme === 'dark' ? Colors.dark.card : 'white' }]}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: themeColors.text }]}>
+                {forgotStep === 1 ? 'Forgot Password' : forgotStep === 2 ? 'Enter OTP' : 'New Password'}
+              </Text>
+              <TouchableOpacity onPress={() => setForgotPasswordVisible(false)}>
+                <MaterialIcons name="close" size={24} color={themeColors.text} />
+              </TouchableOpacity>
+            </View>
+
+            {forgotStep === 1 && (
+              <View style={styles.modalBody}>
+                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+                  Enter your email and we'll send you a verification code.
+                </Text>
+                <TextInput
+                  style={[styles.modalInput, {
+                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                    color: themeColors.text,
+                  }]}
+                  placeholder="name@example.com"
+                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={fpEmail}
+                  onChangeText={setFpEmail}
+                />
+                <TouchableOpacity
+                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
+                  onPress={handleForgotPasswordSendOtp}
+                  disabled={fpLoading}
+                >
+                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Send OTP</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {forgotStep === 2 && (
+              <View style={styles.modalBody}>
+                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+                  Enter the 6-digit code sent to {fpEmail}
+                </Text>
+                <TextInput
+                  style={[styles.modalInput, styles.otpInput, {
+                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                    color: themeColors.text,
+                  }]}
+                  placeholder="000000"
+                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                  keyboardType="number-pad"
+                  maxLength={6}
+                  value={fpOtp}
+                  onChangeText={setFpOtp}
+                />
+                <TouchableOpacity
+                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
+                  onPress={handleVerifyOtp}
+                  disabled={fpLoading}
+                >
+                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Verify</Text>}
+                </TouchableOpacity>
+                <TouchableOpacity onPress={handleForgotPasswordSendOtp} disabled={fpLoading}>
+                  <Text style={[styles.resendText, { color: Colors.primary }]}>Resend OTP</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {forgotStep === 3 && (
+              <View style={styles.modalBody}>
+                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+                  Enter your new password.
+                </Text>
+                <View style={styles.modalPasswordContainer}>
+                  <TextInput
+                    style={[styles.modalInput, { paddingRight: 50,
+                      borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                      backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                      color: themeColors.text,
+                    }]}
+                    placeholder="New password"
+                    placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                    secureTextEntry={!fpShowPassword}
+                    value={fpNewPassword}
+                    onChangeText={setFpNewPassword}
+                  />
+                  <TouchableOpacity style={styles.modalVisibilityToggle} onPress={() => setFpShowPassword(!fpShowPassword)}>
+                    <MaterialIcons name={fpShowPassword ? 'visibility' : 'visibility-off'} size={24} color={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'} />
+                  </TouchableOpacity>
+                </View>
+                <TextInput
+                  style={[styles.modalInput, {
+                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                    color: themeColors.text,
+                  }]}
+                  placeholder="Confirm password"
+                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                  secureTextEntry={!fpShowPassword}
+                  value={fpConfirmPassword}
+                  onChangeText={setFpConfirmPassword}
+                />
+                {fpConfirmPassword.length > 0 && fpConfirmPassword !== fpNewPassword && (
+                  <Text style={styles.mismatchText}>Passwords do not match</Text>
+                )}
+                <TouchableOpacity
+                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
+                  onPress={handleResetPassword}
+                  disabled={fpLoading}
+                >
+                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Reset Password</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -560,6 +793,94 @@ const styles = StyleSheet.create({
   languageLabel: {
     fontSize: 16,
     fontWeight: '500',
+  },
+  forgotPasswordLink: {
+    alignSelf: 'flex-end',
+    paddingHorizontal: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    backgroundColor: 'rgba(0,0,0,0.5)',
+  },
+  modalCard: {
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+  },
+  modalBody: {
+    gap: 16,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  modalInput: {
+    height: 56,
+    borderRadius: 9999,
+    borderWidth: 1,
+    paddingHorizontal: 24,
+    fontSize: 16,
+  },
+  otpInput: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    letterSpacing: 8,
+  },
+  modalButton: {
+    height: 56,
+    borderRadius: 9999,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  modalButtonText: {
+    color: Colors.dark.background,
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  resendText: {
+    textAlign: 'center',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalPasswordContainer: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  modalVisibilityToggle: {
+    position: 'absolute',
+    right: 20,
+    padding: 4,
+  },
+  mismatchText: {
+    color: Colors.error,
+    fontSize: 12,
+    fontWeight: '500',
+    paddingHorizontal: 16,
   },
 });
 

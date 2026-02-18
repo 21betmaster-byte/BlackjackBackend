@@ -1,3 +1,4 @@
+import '../i18n';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack, router } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
@@ -8,6 +9,7 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider as AppThemeProvider } from '@/contexts/ThemeContext';
 import { ToastProvider } from '@/contexts/ToastContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 
 function RootNavigator() {
   const colorScheme = useColorScheme();
@@ -37,6 +39,7 @@ function RootNavigator() {
         <Stack.Screen name="profile-settings-invite" options={{ headerShown: false }} />
         <Stack.Screen name="custom-app-loader" options={{ headerShown: false }} />
         <Stack.Screen name="blackjack-game" options={{ headerShown: false }} />
+        <Stack.Screen name="how-to-play" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>
@@ -47,9 +50,11 @@ export default function RootLayout() {
   return (
     <AuthProvider>
       <AppThemeProvider>
-        <ToastProvider>
-          <RootNavigator />
-        </ToastProvider>
+        <LanguageProvider>
+          <ToastProvider>
+            <RootNavigator />
+          </ToastProvider>
+        </LanguageProvider>
       </AppThemeProvider>
     </AuthProvider>
   );

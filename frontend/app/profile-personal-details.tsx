@@ -19,6 +19,8 @@ import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import CountryPicker from '../components/ui/CountryPicker';
+import { useTranslation } from 'react-i18next';
+import BottomNav from '../components/ui/BottomNav';
 
 type TabType = 'identity' | 'security';
 
@@ -38,6 +40,7 @@ const ProfilePersonalDetailsScreen = () => {
   const { token } = useAuth();
   const toast = useToast();
   const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<TabType>(tab === 'security' ? 'security' : 'identity');
   const [loading, setLoading] = useState(true);
@@ -78,7 +81,7 @@ const ProfilePersonalDetailsScreen = () => {
       setAuthProvider(data.auth_provider || 'email');
       setOriginalProfile(data);
     } catch (error) {
-      toast.show('Failed to load profile.', 'error');
+      toast.show(t('profile.failedLoadProfile'), 'error');
     } finally {
       setLoading(false);
     }
@@ -101,39 +104,39 @@ const ProfilePersonalDetailsScreen = () => {
         country,
       }, { headers: authHeaders });
       setOriginalProfile({ ...originalProfile!, first_name: firstName, last_name: lastName, dob, country });
-      toast.show('Profile updated', 'success');
+      toast.show(t('profile.profileUpdated'), 'success');
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.data?.detail) {
         toast.show(error.response.data.detail, 'error');
       } else {
-        toast.show('Failed to save profile.', 'error');
+        toast.show(t('profile.failedSaveProfile'), 'error');
       }
     } finally {
       setSaving(false);
     }
   };
 
-  const getPasswordStrength = (pw: string): { label: string; color: string } => {
-    if (pw.length < 8) return { label: 'Too short', color: Colors.error };
+  const getPasswordStrength = (pw: string): { labelKey: string; color: string } => {
+    if (pw.length < 8) return { labelKey: 'profile.strengthTooShort', color: Colors.error };
     let score = 0;
     if (/[A-Z]/.test(pw)) score++;
     if (/[a-z]/.test(pw)) score++;
     if (/[0-9]/.test(pw)) score++;
     if (/[^A-Za-z0-9]/.test(pw)) score++;
-    if (score <= 1) return { label: 'Weak', color: Colors.error };
-    if (score === 2) return { label: 'Medium', color: '#f59e0b' };
-    return { label: 'Strong', color: Colors.primary };
+    if (score <= 1) return { labelKey: 'profile.strengthWeak', color: Colors.error };
+    if (score === 2) return { labelKey: 'profile.strengthMedium', color: '#f59e0b' };
+    return { labelKey: 'profile.strengthStrong', color: Colors.primary };
   };
 
   const isGoogleOnly = authProvider === 'google';
 
   const handleChangePassword = async () => {
     if (newPassword.length < 8) {
-      toast.show('Password must be at least 8 characters.', 'error');
+      toast.show(t('auth.passwordTooShort'), 'error');
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.show('Passwords do not match.', 'error');
+      toast.show(t('profile.passwordsMismatch'), 'error');
       return;
     }
     try {
@@ -143,7 +146,7 @@ const ProfilePersonalDetailsScreen = () => {
         body.current_password = currentPassword;
       }
       await axios.put(`${API_URL}/user/password`, body, { headers: authHeaders });
-      toast.show('Password changed', 'success');
+      toast.show(t('profile.passwordChanged'), 'success');
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
@@ -151,7 +154,7 @@ const ProfilePersonalDetailsScreen = () => {
       if (axios.isAxiosError(error) && error.response?.data?.detail) {
         toast.show(error.response.data.detail, 'error');
       } else {
-        toast.show('Failed to change password.', 'error');
+        toast.show(t('profile.failedChangePassword'), 'error');
       }
     } finally {
       setChangingPassword(false);
@@ -180,11 +183,11 @@ const ProfilePersonalDetailsScreen = () => {
           <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
             <MaterialIcons name="arrow-back-ios-new" size={24} color={Colors.primary} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Account Settings</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('profile.accountSettings')}</Text>
           {activeTab === 'identity' ? (
             <TouchableOpacity onPress={handleSaveProfile} disabled={!isDirty || saving}>
               <Text style={[styles.headerSaveButton, { color: isDirty ? Colors.primary : '#94a3b8' }]}>
-                {saving ? 'Saving...' : 'Save'}
+                {saving ? t('common.saving') : t('common.save')}
               </Text>
             </TouchableOpacity>
           ) : (
@@ -199,7 +202,7 @@ const ProfilePersonalDetailsScreen = () => {
             onPress={() => setActiveTab('identity')}
           >
             <Text style={[styles.tabButtonText, { color: activeTab === 'identity' ? Colors.dark.background : (darkTheme ? '#94a3b8' : '#64748b') }]}>
-              Identity
+              {t('profile.identity')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -207,7 +210,7 @@ const ProfilePersonalDetailsScreen = () => {
             onPress={() => setActiveTab('security')}
           >
             <Text style={[styles.tabButtonText, { color: activeTab === 'security' ? Colors.dark.background : (darkTheme ? '#94a3b8' : '#64748b') }]}>
-              Security
+              {t('profile.security')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -226,15 +229,15 @@ const ProfilePersonalDetailsScreen = () => {
 
               {/* Identity Form */}
               <View style={styles.formContainer}>
-                <FormSection title="Identity">
-                  <FormField label="First Name" value={firstName} onChangeText={setFirstName} icon="edit" />
-                  <FormField label="Last Name" value={lastName} onChangeText={setLastName} icon="edit" isLast />
+                <FormSection title={t('profile.identity')}>
+                  <FormField label={t('profile.firstName')} value={firstName} onChangeText={setFirstName} icon="edit" />
+                  <FormField label={t('profile.lastName')} value={lastName} onChangeText={setLastName} icon="edit" isLast />
                 </FormSection>
 
-                <FormSection title="Details">
-                  <FormField label="Date of Birth" value={dob} onChangeText={setDob} icon="calendar-month" type="date" />
+                <FormSection title={t('profile.details')}>
+                  <FormField label={t('profile.dateOfBirth')} value={dob} onChangeText={setDob} icon="calendar-month" type="date" />
                   <View style={[styles.formFieldContainer, { borderBottomWidth: 0 }]}>
-                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>Country of Residence</Text>
+                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>{t('profile.countryOfResidence')}</Text>
                     <CountryPicker
                       value={country}
                       onSelect={setCountry}
@@ -243,9 +246,9 @@ const ProfilePersonalDetailsScreen = () => {
                   </View>
                 </FormSection>
 
-                <FormSection title="Account Info">
+                <FormSection title={t('profile.accountInfo')}>
                   <View style={[styles.formFieldContainer, { borderBottomWidth: 0, paddingHorizontal: 16, paddingVertical: 12 }]}>
-                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>Email</Text>
+                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>{t('profile.email')}</Text>
                     <Text style={[styles.formFieldValue, { color: themeColors.text, opacity: 0.7 }]}>{originalProfile?.email}</Text>
                   </View>
                 </FormSection>
@@ -254,17 +257,17 @@ const ProfilePersonalDetailsScreen = () => {
           ) : (
             /* Security Tab */
             <View style={styles.formContainer}>
-              <FormSection title={isGoogleOnly ? 'Set Password' : 'Change Password'}>
+              <FormSection title={isGoogleOnly ? t('profile.setPassword') : t('profile.changePassword')}>
                 {!isGoogleOnly && (
                   <View style={[styles.formFieldContainer, { borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
-                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>Current Password</Text>
+                    <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>{t('profile.currentPassword')}</Text>
                     <View style={styles.formFieldRow}>
                       <TextInput
                         style={[styles.formFieldValue, { color: themeColors.text }]}
                         value={currentPassword}
                         onChangeText={setCurrentPassword}
                         secureTextEntry={!showCurrentPassword}
-                        placeholder="Enter current password"
+                        placeholder={t('profile.enterCurrentPassword')}
                         placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                       />
                       <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
@@ -274,14 +277,14 @@ const ProfilePersonalDetailsScreen = () => {
                   </View>
                 )}
                 <View style={[styles.formFieldContainer, { borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
-                  <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>New Password</Text>
+                  <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>{t('profile.newPasswordLabel')}</Text>
                   <View style={styles.formFieldRow}>
                     <TextInput
                       style={[styles.formFieldValue, { color: themeColors.text }]}
                       value={newPassword}
                       onChangeText={setNewPassword}
                       secureTextEntry={!showNewPassword}
-                      placeholder="Enter new password"
+                      placeholder={t('profile.enterNewPassword')}
                       placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                     />
                     <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
@@ -290,19 +293,19 @@ const ProfilePersonalDetailsScreen = () => {
                   </View>
                   {newPassword.length > 0 && (
                     <Text style={[styles.strengthText, { color: strength.color }]}>
-                      Strength: {strength.label}
+                      {t('profile.strength', { label: t(strength.labelKey) })}
                     </Text>
                   )}
                 </View>
                 <View style={[styles.formFieldContainer, { borderBottomWidth: 0, borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
-                  <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>Confirm Password</Text>
+                  <Text style={[styles.formFieldLabel, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>{t('profile.confirmPassword')}</Text>
                   <View style={styles.formFieldRow}>
                     <TextInput
                       style={[styles.formFieldValue, { color: themeColors.text }]}
                       value={confirmPassword}
                       onChangeText={setConfirmPassword}
                       secureTextEntry={!showConfirmPassword}
-                      placeholder="Re-enter new password"
+                      placeholder={t('profile.reenterNewPassword')}
                       placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                     />
                     <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
@@ -310,7 +313,7 @@ const ProfilePersonalDetailsScreen = () => {
                     </TouchableOpacity>
                   </View>
                   {confirmPassword.length > 0 && confirmPassword !== newPassword && (
-                    <Text style={[styles.strengthText, { color: Colors.error }]}>Passwords do not match</Text>
+                    <Text style={[styles.strengthText, { color: Colors.error }]}>{t('profile.passwordsMismatch')}</Text>
                   )}
                 </View>
               </FormSection>
@@ -324,7 +327,7 @@ const ProfilePersonalDetailsScreen = () => {
                   <ActivityIndicator color={Colors.dark.background} />
                 ) : (
                   <Text style={styles.changePasswordButtonText}>
-                    {isGoogleOnly ? 'Set Password' : 'Change Password'}
+                    {isGoogleOnly ? t('profile.setPassword') : t('profile.changePassword')}
                   </Text>
                 )}
               </TouchableOpacity>
@@ -333,7 +336,7 @@ const ProfilePersonalDetailsScreen = () => {
                 <View style={[styles.infoBox, { backgroundColor: darkTheme ? 'rgba(17, 212, 196, 0.1)' : 'rgba(17, 212, 196, 0.05)', borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
                   <MaterialIcons name="info" size={20} color={Colors.primary} />
                   <Text style={[styles.infoText, { color: darkTheme ? '#94a3b8' : '#64748b' }]}>
-                    You signed up with Google. Set a password to also log in with email.
+                    {t('profile.googlePasswordInfo')}
                   </Text>
                 </View>
               )}
@@ -341,7 +344,7 @@ const ProfilePersonalDetailsScreen = () => {
           )}
         </ScrollView>
       </View>
-      <ProfileBottomNav />
+      <BottomNav activeTab="profile" />
     </SafeAreaView>
   );
 };
@@ -379,23 +382,6 @@ const FormField = ({ label, value, onChangeText, icon, isLast = false, type = 't
   );
 };
 
-const ProfileBottomNav = () => {
-  const colorScheme = useColorScheme();
-  const themeColors = Colors[colorScheme ?? 'light'];
-  return (
-    <View style={[styles.bottomNav, { backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.95)' : 'rgba(255, 255, 255, 0.9)', borderColor: colorScheme === 'dark' ? Colors.dark.border : '#e2e8f0' }]}>
-      <TouchableOpacity style={styles.navButton} onPress={() => router.push('/home-dashboard')}><MaterialIcons name="home" size={24} color="#94a3b8" /><Text style={[styles.navText, { color: '#94a3b8' }]}>Home</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.navButton}><MaterialIcons name="bar-chart" size={24} color="#94a3b8" /><Text style={[styles.navText, { color: '#94a3b8' }]}>Stats</Text></TouchableOpacity>
-      <View style={{ alignItems: 'center' }}>
-        <TouchableOpacity style={[styles.centerNavButton, { backgroundColor: Colors.primary, borderColor: colorScheme === 'dark' ? themeColors.background : '#fff' }]}><MaterialIcons name="play-arrow" size={32} color={Colors.dark.background} /></TouchableOpacity>
-        <Text style={[styles.navText, { position: 'absolute', bottom: -18, color: Colors.primary, fontWeight: 'bold' }]}>START SESSION</Text>
-      </View>
-      <TouchableOpacity style={styles.navButton}><MaterialIcons name="school" size={24} color="#94a3b8" /><Text style={[styles.navText, { color: '#94a3b8' }]}>Train</Text></TouchableOpacity>
-      <TouchableOpacity style={styles.navButton} onPress={() => router.push('/profile-settings-invite')}><MaterialIcons name="account-circle" size={24} color={Colors.primary} /><Text style={[styles.navText, { color: Colors.primary }]}>Profile</Text></TouchableOpacity>
-    </View>
-  );
-};
-
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { flex: 1, paddingBottom: 80 },
@@ -424,10 +410,6 @@ const styles = StyleSheet.create({
   changePasswordButtonText: { color: Colors.dark.background, fontSize: 16, fontWeight: 'bold' },
   infoBox: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, borderWidth: 1 },
   infoText: { fontSize: 13, flex: 1, lineHeight: 18 },
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 32 : 16, borderTopWidth: 1, zIndex: 50 },
-  navButton: { alignItems: 'center', gap: 4, flex: 1 },
-  navText: { fontSize: 10, fontWeight: '500' },
-  centerNavButton: { position: 'relative', top: -24, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', borderWidth: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 8 },
 });
 
 export default ProfilePersonalDetailsScreen;

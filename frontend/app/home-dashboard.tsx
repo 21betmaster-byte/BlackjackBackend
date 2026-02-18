@@ -9,7 +9,6 @@ import {
   Image,
   ImageBackground,
   Platform,
-  ActivityIndicator,
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -19,10 +18,14 @@ import axios from 'axios';
 import { API_URL } from '../config';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useTranslation } from 'react-i18next';
+import Button from '../components/ui/Button';
+import BottomNav from '../components/ui/BottomNav';
 
 const HomeDashboardScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
+  const { t } = useTranslation();
 
   const { token: authToken } = useAuth();
   const toast = useToast();
@@ -42,15 +45,10 @@ const HomeDashboardScreen = () => {
           result: Math.random() > 0.5 ? 'win' : 'loss',
           mistakes: Math.floor(Math.random() * 3),
         },
-        {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-          },
-        }
+        { headers: { Authorization: `Bearer ${authToken}` } }
       );
       if (response.data.status === 'saved') {
         toast.show('Mock game stats saved successfully!', 'success');
-        console.log('Saved stats:', response.data);
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
@@ -58,13 +56,12 @@ const HomeDashboardScreen = () => {
       } else {
         toast.show('Network error or unexpected issue when saving stats.', 'error');
       }
-      console.error('Save stats error:', error);
     } finally {
       setSavingStats(false);
     }
   };
 
-  const LearningCard = ({ icon, title, learners, description }) => (
+  const LearningCard = ({ icon, title, learners, description }: { icon: any; title: string; learners: string; description: string }) => (
     <View style={[styles.learningCard, { backgroundColor: colorScheme === 'dark' ? '#1c2726' : 'white', borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }]}>
       <View style={styles.learningCardHeader}>
         <View style={[styles.learningCardIconWrapper, { backgroundColor: 'rgba(17, 212, 196, 0.1)' }]}>
@@ -73,9 +70,14 @@ const HomeDashboardScreen = () => {
         <View style={styles.flex1}>
           <View style={styles.learningCardTitleContainer}>
             <Text style={[styles.learningCardTitle, { color: themeColors.text }]}>{title}</Text>
-            <View style={styles.learnersContainer}>
-              <MaterialIcons name="group" size={12} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
-              <Text style={[styles.learnersText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>{learners}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={styles.learnersContainer}>
+                <MaterialIcons name="group" size={12} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
+                <Text style={[styles.learnersText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>{learners}</Text>
+              </View>
+              <TouchableOpacity onPress={() => router.push('/how-to-play')} style={{ padding: 4 }}>
+                <MaterialIcons name="help-outline" size={20} color={Colors.primary} />
+              </TouchableOpacity>
             </View>
           </View>
           <Text style={[styles.learningCardDescription, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]} numberOfLines={1}>{description}</Text>
@@ -84,11 +86,11 @@ const HomeDashboardScreen = () => {
       <View style={styles.learningCardButtons}>
         <TouchableOpacity style={[styles.learningCardButton, { borderColor: colorScheme === 'dark' ? '#3b5452' : '#e2e8f0' }]} onPress={() => router.push('/blackjack-game')}>
           <MaterialIcons name="videogame-asset" size={18} color={themeColors.text} />
-          <Text style={[styles.learningCardButtonText, { color: themeColors.text }]}>Play Mode</Text>
+          <Text style={[styles.learningCardButtonText, { color: themeColors.text }]}>{t('home.playMode')}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.learningCardButton, { backgroundColor: Colors.primary }]}>
+        <TouchableOpacity style={[styles.learningCardButton, { backgroundColor: Colors.primary }]} onPress={() => router.push('/how-to-play')}>
           <MaterialIcons name="school" size={18} color={Colors.dark.background} />
-          <Text style={[styles.learningCardButtonText, { color: Colors.dark.background, fontWeight: 'bold' }]}>Learn Mode</Text>
+          <Text style={[styles.learningCardButtonText, { color: Colors.dark.background, fontWeight: 'bold' }]}>{t('home.learnMode')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -106,8 +108,8 @@ const HomeDashboardScreen = () => {
             />
           </View>
           <View style={styles.welcomeMessageContainer}>
-            <Text style={[styles.welcomeMessageGreeting, { color: colorScheme === 'dark' ? '#9db9b7' : '#64748b' }]}>Good Morning</Text>
-            <Text style={[styles.welcomeMessageName, { color: themeColors.text }]}>Welcome! Alex</Text>
+            <Text style={[styles.welcomeMessageGreeting, { color: colorScheme === 'dark' ? '#9db9b7' : '#64748b' }]}>{t('home.goodMorning')}</Text>
+            <Text style={[styles.welcomeMessageName, { color: themeColors.text }]}>{t('home.welcome', { name: 'Alex' })}</Text>
           </View>
           <TouchableOpacity style={[styles.notificationButton, { backgroundColor: colorScheme === 'dark' ? '#1c2726' : '#f1f5f9' }]}>
             <MaterialIcons name="notifications" size={24} color={themeColors.text} />
@@ -118,8 +120,8 @@ const HomeDashboardScreen = () => {
           {/* Resume Learning Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>Resume Learning</Text>
-              <Text style={[styles.viewAll, { color: Colors.primary }]}>View All</Text>
+              <Text style={[styles.sectionTitle, { color: themeColors.text }]}>{t('home.resumeLearning')}</Text>
+              <Text style={[styles.viewAll, { color: Colors.primary }]}>{t('home.viewAll')}</Text>
             </View>
             <View style={[styles.resumeCard, { backgroundColor: colorScheme === 'dark' ? '#1c2726' : 'white', borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }]}>
               <ImageBackground
@@ -129,14 +131,14 @@ const HomeDashboardScreen = () => {
               >
                 <View style={styles.resumeCardOverlay}>
                   <View style={styles.resumeCardBadge}>
-                    <Text style={styles.resumeCardBadgeText}>Intermediate</Text>
+                    <Text style={styles.resumeCardBadgeText}>{t('home.intermediate')}</Text>
                   </View>
                 </View>
               </ImageBackground>
               <View style={styles.resumeCardContent}>
                 <View style={styles.flex1}>
-                  <Text style={[styles.resumeCardTitle, { color: themeColors.text }]}>Blackjack Strategy</Text>
-                  <Text style={[styles.resumeCardSubtitle, { color: colorScheme === 'dark' ? '#9db9b7' : '#64748b' }]}>Current: Double Down Rules</Text>
+                  <Text style={[styles.resumeCardTitle, { color: themeColors.text }]}>{t('home.blackjackStrategy')}</Text>
+                  <Text style={[styles.resumeCardSubtitle, { color: colorScheme === 'dark' ? '#9db9b7' : '#64748b' }]}>{t('home.currentDoubleDown')}</Text>
                 </View>
                 <TouchableOpacity style={[styles.playButton, { backgroundColor: Colors.primary, shadowColor: Colors.primary }]}>
                   <MaterialIcons name="play-arrow" size={32} color={Colors.dark.background} />
@@ -153,77 +155,34 @@ const HomeDashboardScreen = () => {
 
           {/* Start Learning Section */}
           <View style={styles.section}>
-            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: 16 }]}>Start Learning</Text>
+            <Text style={[styles.sectionTitle, { color: themeColors.text, marginBottom: 16 }]}>{t('home.startLearning')}</Text>
             <View style={styles.learningCardsContainer}>
-              <LearningCard icon="style" title="Texas Hold'em" learners="15k learners" description="Master the art of reading opponents and bluffing." />
-              <LearningCard icon="track-changes" title="European Roulette" learners="8.2k learners" description="Understand odds, payouts, and betting systems." />
-              <LearningCard icon="casino" title="Classic Baccarat" learners="5.4k learners" description="High-stakes basics and banker vs player edge." />
+              <LearningCard icon="style" title={t('home.texasHoldem')} learners={t('home.learners', { count: '15k' })} description={t('home.texasHoldemDesc')} />
+              <LearningCard icon="track-changes" title={t('home.europeanRoulette')} learners={t('home.learners', { count: '8.2k' })} description={t('home.europeanRouletteDesc')} />
+              <LearningCard icon="casino" title={t('home.classicBaccarat')} learners={t('home.learners', { count: '5.4k' })} description={t('home.classicBaccaratDesc')} />
             </View>
           </View>
-           {/* New button to explicitly save mock stats */}
-           <View style={{ padding: 16 }}>
-            <TouchableOpacity
-              style={[styles.primaryButton, savingStats && { opacity: 0.6 }]}
+          <View style={{ padding: 16 }}>
+            <Button
+              title={t('home.saveMockStats')}
               onPress={handleSaveMockStats}
-              disabled={savingStats}
-            >
-              {savingStats ? (
-                <ActivityIndicator color={Colors.dark.background} />
-              ) : (
-                <Text style={styles.primaryButtonText}>Save Mock Game Stats (for testing)</Text>
-              )}
-            </TouchableOpacity>
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={savingStats}
+            />
           </View>
         </ScrollView>
       </View>
-      {/* Custom Bottom Navigation Bar */}
-      <CustomBottomNav />
+      <BottomNav activeTab="home" />
     </SafeAreaView>
   );
 };
 
-const CustomBottomNav = () => {
-    const colorScheme = useColorScheme();
-    const themeColors = Colors[colorScheme ?? 'light'];
-    
-    return (
-        <View style={[styles.bottomNav, { backgroundColor: colorScheme === 'dark' ? 'rgba(16, 34, 32, 0.95)' : 'rgba(255, 255, 255, 0.9)', borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#e2e8f0' }]}>
-            <TouchableOpacity style={styles.navButton}>
-                <MaterialIcons name="home" size={24} color={Colors.primary} style={{fontVariant: ['small-caps']}}/>
-                <Text style={[styles.navButtonText, { color: Colors.primary }]}>Home</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton}>
-                <MaterialIcons name="leaderboard" size={24} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
-                <Text style={[styles.navButtonText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>Stats</Text>
-            </TouchableOpacity>
-            <View style={styles.navSpacer} />
-            <TouchableOpacity style={styles.navButton}>
-                <MaterialIcons name="auto-stories" size={24} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
-                <Text style={[styles.navButtonText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>Strategy</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.navButton} onPress={() => router.push('/profile-settings-invite')}>
-                <MaterialIcons name="person" size={24} color={colorScheme === 'dark' ? '#9db9b7' : '#94a3b8'} />
-                <Text style={[styles.navButtonText, { color: colorScheme === 'dark' ? '#9db9b7' : '#94a3b8' }]}>Profile</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.centerButton, { backgroundColor: Colors.primary, shadowColor: Colors.primary,  borderColor: themeColors.background, borderWidth: 4}]}>
-                <MaterialIcons name="casino" size={32} color={Colors.dark.background} />
-            </TouchableOpacity>
-        </View>
-    )
-}
-
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
   container: { flex: 1 },
-  topAppBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderColor: 'transparent', // Handled by inline style
-    paddingTop: Platform.OS === 'android' ? 24 : 0,
-  },
+  topAppBar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8, borderBottomWidth: 1, borderColor: 'transparent', paddingTop: Platform.OS === 'android' ? 24 : 0 },
   profileIconContainer: { width: 48, height: 48, alignItems: 'center', justifyContent: 'center' },
   profileIcon: { width: 40, height: 40, borderRadius: 20, borderWidth: 2 },
   welcomeMessageContainer: { flex: 1, paddingHorizontal: 12 },
@@ -245,6 +204,7 @@ const styles = StyleSheet.create({
   playButton: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   resumeCardProgressContainer: { paddingHorizontal: 16, paddingBottom: 16 },
   progressBar: { height: 6, borderRadius: 3, overflow: 'hidden' },
+  progressBarFill: { height: '100%' },
   progressText: { fontSize: 12, fontWeight: 'bold', alignSelf: 'flex-end', marginTop: 4 },
   learningCardsContainer: { gap: 16 },
   learningCard: { borderRadius: 16, padding: 16, borderWidth: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 },
@@ -258,30 +218,6 @@ const styles = StyleSheet.create({
   learningCardButtons: { flexDirection: 'row', gap: 12, marginTop: 16 },
   learningCardButton: { flex: 1, height: 40, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderWidth: 1, borderColor: 'transparent' },
   learningCardButtonText: { fontSize: 14, fontWeight: '600' },
-  bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 32 : 16, borderTopWidth: 1 },
-  navButton: { alignItems: 'center', gap: 4, flex: 1 },
-  navButtonText: { fontSize: 10, fontWeight: '500' },
-  centerButton: { position: 'absolute', left: '50%', top: -48, marginLeft: -32, width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center', elevation: 8 },
-  navSpacer: { width: 64 },
-  primaryButton: { // Added style for the new button
-    height: 56,
-    width: '100%',
-    borderRadius: 9999,
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  primaryButtonText: { // Added style for the new button
-    color: Colors.dark.background,
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
 });
 
 export default HomeDashboardScreen;

@@ -52,6 +52,7 @@ export type GameState = {
   insuranceBet: number;
   roundResult: RoundResult | null;
   config: GameConfig;
+  previousBets: number[];
 };
 
 const SUITS: Suit[] = ['hearts', 'diamonds', 'clubs', 'spades'];
@@ -147,31 +148,33 @@ export function createInitialState(config: GameConfig = DEFAULT_CONFIG): GameSta
     shoe: createShoe(config.deckCount),
     discardPile: [],
     dealerHand: [],
-    playerHands: [],
+    playerHands: Array.from({ length: config.maxHands }, () => ({
+      cards: [] as Card[],
+      bet: 0,
+      status: 'active' as HandStatus,
+      isDoubled: false,
+    })),
     activeHandIndex: 0,
     phase: 'betting',
     balance: config.startingBalance,
     insuranceBet: 0,
     roundResult: null,
     config,
+    previousBets: [],
   };
 }
 
 export function placeBet(state: GameState, handIndex: number, amount: number): GameState {
   if (state.phase !== 'betting') return state;
   if (amount > state.balance) return state;
-  if (amount > state.config.maxBet) return state;
+  if (handIndex >= state.playerHands.length) return state;
+
+  const hand = state.playerHands[handIndex];
+  const newBet = hand.bet + amount;
+  if (newBet > state.config.maxBet) return state;
 
   const newHands = [...state.playerHands];
-  if (handIndex < newHands.length) {
-    const newBet = newHands[handIndex].bet + amount;
-    if (newBet > state.config.maxBet) return state;
-    newHands[handIndex] = { ...newHands[handIndex], bet: newBet };
-  } else if (newHands.length < state.config.maxHands) {
-    newHands.push({ cards: [], bet: amount, status: 'active', isDoubled: false });
-  } else {
-    return state;
-  }
+  newHands[handIndex] = { ...hand, bet: newBet };
 
   return { ...state, playerHands: newHands, balance: state.balance - amount };
 }
@@ -181,16 +184,23 @@ export function removeBet(state: GameState, handIndex: number): GameState {
   if (handIndex >= state.playerHands.length) return state;
 
   const hand = state.playerHands[handIndex];
-  const newHands = state.playerHands.filter((_, i) => i !== handIndex);
+  if (hand.bet === 0) return state;
+
+  const newHands = [...state.playerHands];
+  newHands[handIndex] = { ...hand, bet: 0 };
   return { ...state, playerHands: newHands, balance: state.balance + hand.bet };
 }
 
 export function dealInitialCards(state: GameState): GameState {
   if (state.phase !== 'betting') return state;
-  if (state.playerHands.length === 0 || state.playerHands.every(h => h.bet === 0)) return state;
+  if (!state.playerHands.some(h => h.bet > 0)) return state;
+
+  // Save bets for rebet feature, filter to active hands only
+  const previousBets = state.playerHands.map(h => h.bet);
+  const activeHands = state.playerHands.filter(h => h.bet > 0);
 
   let shoe = [...state.shoe];
-  const hands = state.playerHands.map(h => ({ ...h, cards: [] as Card[] }));
+  const hands = activeHands.map(h => ({ ...h, cards: [] as Card[] }));
   const dealerHand: Card[] = [];
 
   // Deal two rounds
@@ -227,7 +237,7 @@ export function dealInitialCards(state: GameState): GameState {
     activeHandIndex = 0;
   }
 
-  return { ...state, shoe, dealerHand, playerHands: hands, phase, activeHandIndex };
+  return { ...state, shoe, dealerHand, playerHands: hands, phase, activeHandIndex, previousBets };
 }
 
 export function checkDealerPeek(state: GameState): { hasBlackjack: boolean; offerInsurance: boolean } {
@@ -497,12 +507,48 @@ export function startNewRound(state: GameState): GameState {
     shoe,
     discardPile,
     dealerHand: [],
-    playerHands: [],
+    playerHands: Array.from({ length: state.config.maxHands }, () => ({
+      cards: [] as Card[],
+      bet: 0,
+      status: 'active' as HandStatus,
+      isDoubled: false,
+    })),
     activeHandIndex: 0,
     phase: 'betting',
     insuranceBet: 0,
     roundResult: null,
   };
+}
+
+export function rebetAndDeal(state: GameState): GameState {
+  if (state.phase !== 'betting') return state;
+  if (state.previousBets.length === 0) return state;
+
+  // Apply previous bets, reducing hands if balance insufficient
+  let balance = state.balance;
+  const newHands = Array.from({ length: state.config.maxHands }, () => ({
+    cards: [] as Card[],
+    bet: 0,
+    status: 'active' as HandStatus,
+    isDoubled: false,
+  }));
+
+  for (let i = 0; i < state.previousBets.length && i < newHands.length; i++) {
+    const bet = state.previousBets[i];
+    if (bet > 0 && bet <= balance) {
+      newHands[i] = { ...newHands[i], bet };
+      balance -= bet;
+    }
+  }
+
+  if (!newHands.some(h => h.bet > 0)) return state;
+
+  const stateWithBets = { ...state, playerHands: newHands, balance };
+  return dealInitialCards(stateWithBets);
+}
+
+export function resetMoney(state: GameState): GameState {
+  return { ...state, balance: state.config.startingBalance };
 }
 
 export function formatCardShort(card: Card): string {

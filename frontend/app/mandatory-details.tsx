@@ -20,6 +20,7 @@ import { useToast } from '../contexts/ToastContext';
 import { API_URL } from '../config';
 import CountryPicker from '../components/ui/CountryPicker';
 import { validateDob, parseDobToDate, formatDateToDob, formatDateToISO } from '../utils/dob-validation';
+import { useTranslation } from 'react-i18next';
 
 // Only import DateTimePicker on native platforms
 let DateTimePicker: any = null;
@@ -32,6 +33,7 @@ const MandatoryDetailsScreen = () => {
   const themeColors = Colors[colorScheme ?? 'light'];
   const { token, setMandatoryDetailsCompleted } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -114,16 +116,16 @@ const MandatoryDetailsScreen = () => {
 
   const handleContinue = async () => {
     if (firstName.trim() === '') {
-      toast.show('First name is required.', 'error');
+      toast.show(t('onboarding.firstNameRequired'), 'error');
       return;
     }
     if (lastName.trim() === '') {
-      toast.show('Last name is required.', 'error');
+      toast.show(t('onboarding.lastNameRequired'), 'error');
       return;
     }
     if (dob.trim() === '') {
       setDobTouched(true);
-      toast.show('Date of birth is required.', 'error');
+      toast.show(t('onboarding.dobRequired'), 'error');
       return;
     }
     if (dobValidationError) {
@@ -131,7 +133,7 @@ const MandatoryDetailsScreen = () => {
       return;
     }
     if (country.trim() === '') {
-      toast.show('Country is required.', 'error');
+      toast.show(t('onboarding.countryRequired'), 'error');
       return;
     }
 
@@ -139,7 +141,7 @@ const MandatoryDetailsScreen = () => {
       setLoading(true);
 
       if (!token) {
-        toast.show('Session expired. Please log in again.', 'error');
+        toast.show(t('onboarding.sessionExpired'), 'error');
         router.replace('/login');
         return;
       }
@@ -162,7 +164,7 @@ const MandatoryDetailsScreen = () => {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         if (response.status === 401) {
-          toast.show('Session expired. Please log in again.', 'error');
+          toast.show(t('onboarding.sessionExpired'), 'error');
           router.replace('/login');
           return;
         }
@@ -211,7 +213,7 @@ const MandatoryDetailsScreen = () => {
             <TouchableOpacity style={styles.backButton} onPress={handleBack}>
               <MaterialIcons name="arrow-back-ios-new" size={24} color={themeColors.text} />
             </TouchableOpacity>
-            <Text style={[styles.headerTitle, { color: themeColors.text }]}>Step 2 of 5</Text>
+            <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('onboarding.step', { current: 2, total: 5 })}</Text>
             <View style={styles.spacer} />
           </View>
           {/* Progress Bar */}
@@ -234,9 +236,9 @@ const MandatoryDetailsScreen = () => {
         >
           {/* Header Section */}
           <View style={styles.mb8}>
-            <Text style={[styles.h2, { color: themeColors.text }]}>Mandatory Details</Text>
+            <Text style={[styles.h2, { color: themeColors.text }]}>{t('onboarding.mandatoryDetails')}</Text>
             <Text style={[styles.p, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-              Help us secure your account. These details are required for legal compliance and casino safety training.
+              {t('onboarding.mandatoryDetailsDesc')}
             </Text>
           </View>
 
@@ -245,7 +247,7 @@ const MandatoryDetailsScreen = () => {
             {/* First Name Field */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
-                First Name
+                {t('onboarding.firstNameLabel')}
               </Text>
               <View style={styles.relativeInput}>
                 <TextInput
@@ -259,7 +261,7 @@ const MandatoryDetailsScreen = () => {
                       color: themeColors.text,
                     },
                   ]}
-                  placeholder="Enter your first name"
+                  placeholder={t('onboarding.firstNamePlaceholder')}
                   placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
                   value={firstName}
                   onChangeText={setFirstName}
@@ -269,14 +271,14 @@ const MandatoryDetailsScreen = () => {
                 )}
               </View>
               {firstNameError && (
-                <Text style={[styles.errorMessage, { color: Colors.error }]}>This field is mandatory</Text>
+                <Text style={[styles.errorMessage, { color: Colors.error }]}>{t('onboarding.mandatory')}</Text>
               )}
             </View>
 
             {/* Last Name Field */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
-                Last Name
+                {t('onboarding.lastNameLabel')}
               </Text>
               <View style={styles.relativeInput}>
                 <TextInput
@@ -288,7 +290,7 @@ const MandatoryDetailsScreen = () => {
                       color: themeColors.text,
                     },
                   ]}
-                  placeholder="Enter your last name"
+                  placeholder={t('onboarding.lastNamePlaceholder')}
                   placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
                   value={lastName}
                   onChangeText={setLastName}
@@ -298,14 +300,14 @@ const MandatoryDetailsScreen = () => {
                 )}
               </View>
               {lastNameError && (
-                <Text style={[styles.errorMessage, { color: Colors.error }]}>This field is mandatory</Text>
+                <Text style={[styles.errorMessage, { color: Colors.error }]}>{t('onboarding.mandatory')}</Text>
               )}
             </View>
 
             {/* Date of Birth Field */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
-                Date of Birth
+                {t('onboarding.dobLabel')}
               </Text>
               <View style={styles.relativeInput}>
                 <TextInput
@@ -323,7 +325,7 @@ const MandatoryDetailsScreen = () => {
                       paddingRight: 56,
                     },
                   ]}
-                  placeholder="MM / DD / YYYY"
+                  placeholder={t('onboarding.dobPlaceholder')}
                   placeholderTextColor={isDark ? '#a1a1aa' : '#6b7280'}
                   value={dob}
                   onChangeText={handleDobChange}
@@ -370,7 +372,7 @@ const MandatoryDetailsScreen = () => {
                 <Text style={[styles.errorMessage, { color: Colors.error }]}>{dobValidationError}</Text>
               ) : (
                 <Text style={[styles.dobHint, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-                  You must be at least 18 years old.
+                  {t('onboarding.dobHint')}
                 </Text>
               )}
             </View>
@@ -388,14 +390,14 @@ const MandatoryDetailsScreen = () => {
                     <View style={styles.modalHeader}>
                       <TouchableOpacity onPress={() => setShowDatePicker(false)}>
                         <Text style={[styles.modalButton, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-                          Cancel
+                          {t('common.cancel')}
                         </Text>
                       </TouchableOpacity>
                       <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-                        Date of Birth
+                        {t('onboarding.dobLabel')}
                       </Text>
                       <TouchableOpacity onPress={handlePickerDone}>
-                        <Text style={[styles.modalButton, { color: Colors.primary }]}>Done</Text>
+                        <Text style={[styles.modalButton, { color: Colors.primary }]}>{t('common.done')}</Text>
                       </TouchableOpacity>
                     </View>
                     <DateTimePicker
@@ -425,7 +427,7 @@ const MandatoryDetailsScreen = () => {
             {/* Country Selection */}
             <View style={styles.inputGroup}>
               <Text style={[styles.inputLabel, { color: isDark ? '#d1d5db' : '#4b5563' }]}>
-                Country
+                {t('onboarding.countryLabel')}
               </Text>
               <CountryPicker
                 value={country}
@@ -434,18 +436,17 @@ const MandatoryDetailsScreen = () => {
                 colorScheme={colorScheme}
               />
               {countryError && (
-                <Text style={[styles.errorMessage, { color: Colors.error }]}>This field is mandatory</Text>
+                <Text style={[styles.errorMessage, { color: Colors.error }]}>{t('onboarding.mandatory')}</Text>
               )}
             </View>
 
             {/* Privacy Consent Note */}
             <View style={styles.privacyNoteContainer}>
               <Text style={[styles.privacyNoteText, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-                By continuing, you agree to our{' '}
+                {t('onboarding.privacyNote')}{' '}
                 <Text style={[styles.linkText, { color: Colors.primary }]} onPress={() => console.log('Privacy Policy')}>
-                  Privacy Policy
-                </Text>{' '}
-                and confirm that you are using this app for training purposes only.
+                  {t('auth.privacyPolicy')}
+                </Text>
               </Text>
             </View>
           </View>
@@ -470,7 +471,7 @@ const MandatoryDetailsScreen = () => {
               <ActivityIndicator color={Colors.dark.background} />
             ) : (
               <>
-                <Text style={styles.continueButtonText}>Continue</Text>
+                <Text style={styles.continueButtonText}>{t('common.continue')}</Text>
                 <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
               </>
             )}

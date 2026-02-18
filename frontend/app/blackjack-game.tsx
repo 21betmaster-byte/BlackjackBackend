@@ -21,6 +21,7 @@ import axios from 'axios';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { API_URL } from '../config';
+import { useTranslation } from 'react-i18next';
 import PlayingCard from '../components/PlayingCard';
 import BettingCircle from '../components/BettingCircle';
 import {
@@ -41,6 +42,8 @@ import {
   playDealer,
   settleRound,
   startNewRound,
+  rebetAndDeal,
+  resetMoney,
   scoreHand,
   canSplit,
   canDouble,
@@ -63,6 +66,8 @@ type GameAction =
   | { type: 'PLAY_DEALER' }
   | { type: 'SETTLE'; mistakes: number }
   | { type: 'NEW_ROUND' }
+  | { type: 'REBET_AND_DEAL' }
+  | { type: 'RESET_MONEY' }
   | { type: 'RESET'; config?: GameConfig };
 
 function gameReducer(state: GameState, action: GameAction): GameState {
@@ -100,6 +105,19 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return settleRound(state, action.mistakes);
     case 'NEW_ROUND':
       return startNewRound(state);
+    case 'REBET_AND_DEAL': {
+      let newState = rebetAndDeal(state);
+      const peek = checkDealerPeek(newState);
+      if (peek.offerInsurance) {
+        newState = { ...newState, phase: 'insurance' };
+      } else if (peek.hasBlackjack) {
+        newState = { ...newState, phase: 'dealer_turn' };
+        newState = playDealer(newState);
+      }
+      return newState;
+    }
+    case 'RESET_MONEY':
+      return resetMoney(state);
     case 'RESET':
       return createInitialState(action.config ?? state.config);
     default:
@@ -121,6 +139,7 @@ export default function BlackjackGameScreen({
   const colorScheme = useColorScheme();
   const { token: authToken } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
 
   const config: GameConfig = { ...DEFAULT_CONFIG, ...gameConfig };
 
@@ -239,27 +258,32 @@ export default function BlackjackGameScreen({
             <MaterialIcons name="arrow-back" size={24} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.balanceText}>${gameState.balance.toLocaleString()}</Text>
-          <View style={styles.shoeIndicator}>
-            <MaterialIcons name="style" size={16} color="rgba(255,255,255,0.6)" />
-            <Text style={styles.shoeText}>{shoeCount}</Text>
+          <View style={styles.headerRight}>
+            <TouchableOpacity onPress={() => router.push('/how-to-play')} style={styles.helpButton}>
+              <MaterialIcons name="help-outline" size={20} color="rgba(255,255,255,0.7)" />
+            </TouchableOpacity>
+            <View style={styles.shoeIndicator}>
+              <MaterialIcons name="style" size={16} color="rgba(255,255,255,0.6)" />
+              <Text style={styles.shoeText}>{shoeCount}</Text>
+            </View>
           </View>
         </View>
 
         {/* Table */}
         <View style={styles.table}>
           {/* Table rules text */}
-          <Text style={styles.tableRulesText}>BLACKJACK PAYS 3 TO 2</Text>
+          <Text style={styles.tableRulesText}>{t('game.blackjackPays')}</Text>
 
           {/* Shuffling indicator */}
           {shouldReshuffle(gameState.shoe, gameState.config) && gameState.phase === 'betting' && (
             <Animated.View entering={FadeIn} style={styles.shufflingBanner}>
-              <Text style={styles.shufflingText}>SHUFFLING...</Text>
+              <Text style={styles.shufflingText}>{t('game.shuffling')}</Text>
             </Animated.View>
           )}
 
           {/* Dealer area */}
           <View style={styles.dealerArea}>
-            <Text style={styles.dealerLabel}>DEALER</Text>
+            <Text style={styles.dealerLabel}>{t('game.dealer')}</Text>
             <View style={styles.dealerCards}>
               {gameState.dealerHand.map((card, i) => (
                 <Animated.View key={i} entering={FadeIn.delay(i * 150)} style={{ marginLeft: i > 0 ? -20 : 0, zIndex: i }}>
@@ -288,15 +312,11 @@ export default function BlackjackGameScreen({
                     key={i}
                     hand={gameState.playerHands[i]}
                     isActive={false}
-                    onPress={() => {
-                      if (gameState.playerHands[i]) {
-                        handleRemoveBet(i);
-                      } else {
-                        handlePlaceBet(i);
-                      }
-                    }}
+                    onPress={() => handlePlaceBet(i)}
+                    onLongPress={() => handleRemoveBet(i)}
                     betAmount={gameState.playerHands[i]?.bet || 0}
-                    handLabel={`Hand ${i + 1}`}
+                    handLabel={t('game.hand', { num: i + 1 })}
+                    chipConfigs={chips}
                   />
                 ))}
               </View>
@@ -310,7 +330,7 @@ export default function BlackjackGameScreen({
                     isActive={gameState.phase === 'player_turn' && i === gameState.activeHandIndex}
                     onPress={() => {}}
                     betAmount={hand.bet}
-                    handLabel={gameState.playerHands.length > 1 ? `Hand ${i + 1}` : undefined}
+                    handLabel={gameState.playerHands.length > 1 ? t('game.hand', { num: i + 1 }) : undefined}
                   />
                 ))}
               </View>
@@ -321,14 +341,14 @@ export default function BlackjackGameScreen({
           {trainerEnabled && trainer.bestPlay && gameState.phase === 'player_turn' && (
             <Animated.View entering={FadeIn} style={styles.hintContainer}>
               <MaterialIcons name="lightbulb" size={14} color="#d69e2e" />
-              <Text style={styles.hintText}>Best play: {trainer.bestPlay.action.toUpperCase()}</Text>
+              <Text style={styles.hintText}>{t('game.bestPlay', { action: trainer.bestPlay.action.toUpperCase() })}</Text>
             </Animated.View>
           )}
 
           {/* Mistake flash (only when trainer is enabled) */}
           {trainerEnabled && trainer.lastAction && (
             <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.mistakeFlash}>
-              <Text style={styles.mistakeText}>Optimal was: {trainer.lastAction.toUpperCase()}</Text>
+              <Text style={styles.mistakeText}>{t('game.optimalWas', { action: trainer.lastAction.toUpperCase() })}</Text>
             </Animated.View>
           )}
         </View>
@@ -337,22 +357,22 @@ export default function BlackjackGameScreen({
         {gameState.phase === 'insurance' && (
           <Animated.View entering={SlideInDown} style={styles.insuranceOverlay}>
             <View style={styles.insuranceModal}>
-              <Text style={styles.insuranceTitle}>Insurance?</Text>
+              <Text style={styles.insuranceTitle}>{t('game.insurance')}</Text>
               <Text style={styles.insuranceDesc}>
-                Dealer shows Ace. Take insurance for ${Math.floor((gameState.playerHands[0]?.bet || 0) / 2)}?
+                {t('game.insuranceDesc', { amount: Math.floor((gameState.playerHands[0]?.bet || 0) / 2) })}
               </Text>
               <View style={styles.insuranceButtons}>
                 <TouchableOpacity
                   style={[styles.insuranceBtn, styles.insuranceBtnNo]}
                   onPress={() => dispatch({ type: 'INSURANCE', accepted: false })}
                 >
-                  <Text style={styles.insuranceBtnText}>No</Text>
+                  <Text style={styles.insuranceBtnText}>{t('common.no')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[styles.insuranceBtn, styles.insuranceBtnYes]}
                   onPress={() => dispatch({ type: 'INSURANCE', accepted: true })}
                 >
-                  <Text style={styles.insuranceBtnText}>Yes</Text>
+                  <Text style={styles.insuranceBtnText}>{t('common.yes')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -365,29 +385,29 @@ export default function BlackjackGameScreen({
             <View style={styles.resultCard}>
               <Text style={styles.resultTitle}>
                 {gameState.roundResult.totalPayout > totalBets()
-                  ? 'You Win!'
+                  ? t('game.youWin')
                   : gameState.roundResult.totalPayout === totalBets()
-                  ? 'Push'
-                  : 'Dealer Wins'}
+                  ? t('game.push')
+                  : t('game.dealerWins')}
               </Text>
               <View style={styles.resultDetails}>
                 {gameState.roundResult.handResults.map((hr, i) => (
                   <Text key={i} style={styles.resultLine}>
-                    Hand {i + 1}: {hr.result.toUpperCase()} {hr.payout > 0 ? `+$${hr.payout}` : '$0'}
+                    {t('game.hand', { num: i + 1 })}: {hr.result.toUpperCase()} {hr.payout > 0 ? `+$${hr.payout}` : '$0'}
                   </Text>
                 ))}
               </View>
               {trainerEnabled && gameState.roundResult.mistakes > 0 && (
                 <Text style={styles.mistakesResult}>
-                  Strategy mistakes: {gameState.roundResult.mistakes}
+                  {t('game.strategyMistakes', { count: gameState.roundResult.mistakes })}
                 </Text>
               )}
               <Text style={styles.payoutText}>
-                Net: {gameState.roundResult.totalPayout >= totalBets() ? '+' : ''}
+                {t('game.net')}: {gameState.roundResult.totalPayout >= totalBets() ? '+' : ''}
                 ${gameState.roundResult.totalPayout - totalBets()}
               </Text>
               <TouchableOpacity style={styles.newRoundBtn} onPress={handleNewRound}>
-                <Text style={styles.newRoundBtnText}>New Hand</Text>
+                <Text style={styles.newRoundBtnText}>{t('game.newHand')}</Text>
               </TouchableOpacity>
             </View>
           </Animated.View>
@@ -413,13 +433,34 @@ export default function BlackjackGameScreen({
                   </TouchableOpacity>
                 ))}
               </View>
-              <TouchableOpacity
-                style={[styles.dealButton, !canDeal && styles.dealButtonDisabled]}
-                onPress={() => dispatch({ type: 'DEAL' })}
-                disabled={!canDeal}
-              >
-                <Text style={styles.dealButtonText}>DEAL</Text>
-              </TouchableOpacity>
+              <View style={styles.dealButtonRow}>
+                {gameState.previousBets.some(b => b > 0) && (
+                  <TouchableOpacity
+                    style={[styles.rebetButton]}
+                    onPress={() => {
+                      trainer.resetRound();
+                      dispatch({ type: 'REBET_AND_DEAL' });
+                    }}
+                  >
+                    <Text style={styles.rebetButtonText}>{t('game.rebetAndDeal')}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity
+                  style={[styles.dealButton, !canDeal && styles.dealButtonDisabled, { flex: 1 }]}
+                  onPress={() => dispatch({ type: 'DEAL' })}
+                  disabled={!canDeal}
+                >
+                  <Text style={styles.dealButtonText}>{t('game.deal')}</Text>
+                </TouchableOpacity>
+              </View>
+              {gameState.balance === 0 && (
+                <TouchableOpacity
+                  style={styles.resetMoneyButton}
+                  onPress={() => dispatch({ type: 'RESET_MONEY' })}
+                >
+                  <Text style={styles.resetMoneyButtonText}>{t('game.resetMoney')}</Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
 
@@ -430,35 +471,35 @@ export default function BlackjackGameScreen({
                 onPress={() => handleAction('hit', { type: 'HIT' })}
                 disabled={!canHit}
               >
-                <Text style={styles.actionBtnText}>HIT</Text>
+                <Text style={styles.actionBtnText}>{t('game.hit')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, !canStand && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'stand' && styles.actionBtnRecommended]}
                 onPress={() => handleAction('stand', { type: 'STAND' })}
                 disabled={!canStand}
               >
-                <Text style={styles.actionBtnText}>STAND</Text>
+                <Text style={styles.actionBtnText}>{t('game.stand')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, !canDbl && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'double' && styles.actionBtnRecommended]}
                 onPress={() => handleAction('double', { type: 'DOUBLE' })}
                 disabled={!canDbl}
               >
-                <Text style={styles.actionBtnText}>DOUBLE</Text>
+                <Text style={styles.actionBtnText}>{t('game.double')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, !canSpl && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'split' && styles.actionBtnRecommended]}
                 onPress={() => handleAction('split', { type: 'SPLIT' })}
                 disabled={!canSpl}
               >
-                <Text style={styles.actionBtnText}>SPLIT</Text>
+                <Text style={styles.actionBtnText}>{t('game.split')}</Text>
               </TouchableOpacity>
             </View>
           )}
 
           {gameState.phase === 'dealer_turn' && (
             <View style={styles.waitingContainer}>
-              <Text style={styles.waitingText}>Dealer playing...</Text>
+              <Text style={styles.waitingText}>{t('game.dealerPlaying')}</Text>
             </View>
           )}
         </View>
@@ -498,6 +539,19 @@ const styles = StyleSheet.create({
     color: '#11d4c4',
     fontSize: 22,
     fontWeight: 'bold',
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  helpButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   shoeIndicator: {
     flexDirection: 'row',
@@ -572,7 +626,7 @@ const styles = StyleSheet.create({
   },
   dealerScoreText: {
     color: '#fff',
-    fontSize: 14,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   playerArea: {
@@ -769,6 +823,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: 'bold',
   },
+  dealButtonRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   dealButton: {
     backgroundColor: '#11d4c4',
     height: 52,
@@ -780,6 +838,36 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 5,
+  },
+  rebetButton: {
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    height: 52,
+    borderRadius: 26,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  rebetButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  resetMoneyButton: {
+    backgroundColor: 'rgba(229, 62, 62, 0.2)',
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 62, 62, 0.4)',
+  },
+  resetMoneyButtonText: {
+    color: '#e53e3e',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   dealButtonDisabled: {
     backgroundColor: 'rgba(17, 212, 196, 0.3)',

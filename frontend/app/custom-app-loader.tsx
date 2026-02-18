@@ -13,11 +13,13 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
+import { useTranslation } from 'react-i18next';
 
 const CustomAppLoaderScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   const darkTheme = colorScheme === 'dark';
+  const { t } = useTranslation();
 
   const [progress, setProgress] = useState(0);
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -147,12 +149,12 @@ const CustomAppLoaderScreen = () => {
              <Animated.View style={[styles.floatingChip2, {transform: [{translateY: shuffleY}, {rotate: shuffleRotate}]}]}><MaterialIcons name="token" size={32} color={'rgba(17, 212, 196, 0.4)'} /></Animated.View>
           </View>
           <View style={styles.statusContainer}>
-            <Text style={styles.statusTitle}>Preparing Your Deck</Text>
-            <Text style={styles.statusSubtitle}>Calculating the optimal strategies for your next session...</Text>
+            <Text style={styles.statusTitle}>{t('loader.preparingDeck')}</Text>
+            <Text style={styles.statusSubtitle}>{t('loader.calculatingStrategies')}</Text>
           </View>
           <View style={styles.progressContainer}>
              <View style={styles.progressLabels}>
-                <Text style={styles.progressLabelText}>Syncing</Text>
+                <Text style={styles.progressLabelText}>{t('loader.syncing')}</Text>
                 <Text style={styles.progressPercentText}>{Math.min(100, Math.floor(progress))}%</Text>
              </View>
              <View style={[styles.progressBar, {backgroundColor: 'rgba(255,255,255,0.05)'}]}>
@@ -165,7 +167,7 @@ const CustomAppLoaderScreen = () => {
         <View style={styles.footer}>
           <View style={[styles.tipContainer, {backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.1)'}]}>
             <MaterialIcons name="lightbulb" size={14} color={Colors.primary} />
-            <Text style={styles.tipText}>Tip: Doubling down on 11 is statistically favorable.</Text>
+            <Text style={styles.tipText}>{t('loader.tip')}</Text>
           </View>
         </View>
       </ImageBackground>

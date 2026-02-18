@@ -21,6 +21,11 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import axios from 'axios';
 import config, { API_URL } from '../config';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../i18n';
+import { useLanguage } from '../contexts/LanguageContext';
+import BottomNav from '../components/ui/BottomNav';
+import AppModal from '../components/ui/AppModal';
 
 const ProfileSettingsInviteScreen = () => {
   const colorScheme = useColorScheme();
@@ -30,9 +35,12 @@ const ProfileSettingsInviteScreen = () => {
 
   const [haptics, setHaptics] = useState(true);
   const [userName, setUserName] = useState('');
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
 
   const { token, logout } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const referralLink = `${config.appName.toLowerCase()}.com/ref`;
 
   useEffect(() => {
@@ -49,7 +57,7 @@ const ProfileSettingsInviteScreen = () => {
 
   const copyToClipboard = async () => {
     await ExpoClipboard.setStringAsync(referralLink);
-    toast.show('Referral Link Copied!', 'success');
+    toast.show(t('profile.referralCopied'), 'success');
   };
 
   const handleLogout = async () => {
@@ -65,7 +73,7 @@ const ProfileSettingsInviteScreen = () => {
           <TouchableOpacity onPress={() => router.back()} style={[styles.headerButton, { backgroundColor: darkTheme ? 'transparent' : 'transparent' }]}>
             <MaterialIcons name="arrow-back-ios-new" size={24} color={themeColors.text} />
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: themeColors.text }]}>Profile Settings</Text>
+          <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('profile.profileSettings')}</Text>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -78,66 +86,89 @@ const ProfileSettingsInviteScreen = () => {
               </TouchableOpacity>
             </View>
             <Text style={[styles.profileName, { color: themeColors.text }]}>{userName}</Text>
-            <Text style={styles.profileStats}>{config.appName} Member</Text>
+            <Text style={styles.profileStats}>{t('profile.member', { appName: config.appName })}</Text>
           </View>
 
           {/* Account Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Account</Text>
+            <Text style={styles.sectionTitle}>{t('profile.account')}</Text>
             <View style={styles.sectionContent}>
-              <SettingsRow icon="person" title="Personal Details" isFirst
+              <SettingsRow icon="person" title={t('profile.personalDetails')} isFirst
                 onPress={() => router.push('/profile-personal-details')} />
-              <SettingsRow icon="lock" title="Password & Security" isLast
+              <SettingsRow icon="lock" title={t('profile.passwordSecurity')} isLast
                 onPress={() => router.push({ pathname: '/profile-personal-details', params: { tab: 'security' } })} />
             </View>
           </View>
 
           {/* Preferences Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Preferences</Text>
+            <Text style={styles.sectionTitle}>{t('profile.preferences')}</Text>
             <View style={styles.sectionContent}>
-                <SettingsRow icon="translate" title="Language" value="English (US)" isFirst onPress={() => console.log('Language')} />
-                <SettingsRow icon="dark-mode" title="Dark Mode" isToggle value={isDark} onValueChange={(val: boolean) => setThemePreference(val ? 'dark' : 'light')} />
-                <SettingsRow icon="vibration" title="Haptic Feedback" isToggle value={haptics} onValueChange={setHaptics} isLast />
+                <SettingsRow icon="translate" title={t('profile.language')} value={SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel ?? 'English'} isFirst onPress={() => setLanguagePickerVisible(true)} />
+                <SettingsRow icon="dark-mode" title={t('profile.darkMode')} isToggle value={isDark} onValueChange={(val: boolean) => setThemePreference(val ? 'dark' : 'light')} />
+                <SettingsRow icon="vibration" title={t('profile.hapticFeedback')} isToggle value={haptics} onValueChange={setHaptics} isLast />
             </View>
           </View>
 
           {/* Invite Section */}
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Invite Friends</Text>
+            <Text style={styles.sectionTitle}>{t('profile.inviteFriends')}</Text>
             <View style={[styles.inviteCard, { backgroundColor: 'rgba(17, 212, 196, 0.1)', borderColor: 'rgba(17, 212, 196, 0.2)' }]}>
                 <View style={styles.inviteHeader}>
                     <View style={[styles.inviteIcon, {backgroundColor: Colors.primary}]}><MaterialIcons name="celebration" size={24} color={Colors.dark.background} /></View>
                     <View>
-                        <Text style={[styles.inviteTitle, {color: themeColors.text}]}>Win Together</Text>
-                        <Text style={styles.inviteSubtitle}>Refer a friend and you both get 500 Chips for training!</Text>
+                        <Text style={[styles.inviteTitle, {color: themeColors.text}]}>{t('profile.winTogether')}</Text>
+                        <Text style={styles.inviteSubtitle}>{t('profile.referralDesc')}</Text>
                     </View>
                 </View>
                 <View style={styles.referralContainer}>
                     <TextInput style={[styles.referralInput, {backgroundColor: darkTheme ? themeColors.background : 'white', borderColor: 'rgba(17, 212, 196, 0.3)'}]} value={referralLink} editable={false} />
-                    <TouchableOpacity style={[styles.copyButton, {backgroundColor: Colors.primary}]} onPress={copyToClipboard}><Text style={styles.copyButtonText}>Copy</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.copyButton, {backgroundColor: Colors.primary}]} onPress={copyToClipboard}><Text style={styles.copyButtonText}>{t('common.copy')}</Text></TouchableOpacity>
                 </View>
                 <View style={styles.shareButtonsContainer}>
-                    <ShareButton icon="chat" brandColor="#25D366" label="WhatsApp" />
-                    <ShareButton icon="alternate-email" brandColor="#1DA1F2" label="Twitter" />
-                    <ShareButton icon="message" brandColor="#6366F1" label="Messages" />
-                    <ShareButton icon="share" brandColor="#3B82F6" label="More" />
+                    <ShareButton icon="chat" brandColor="#25D366" label={t('profile.whatsApp')} />
+                    <ShareButton icon="alternate-email" brandColor="#1DA1F2" label={t('profile.twitter')} />
+                    <ShareButton icon="message" brandColor="#6366F1" label={t('profile.messages')} />
+                    <ShareButton icon="share" brandColor="#3B82F6" label={t('profile.more')} />
                 </View>
             </View>
           </View>
-          
+
           {/* Support Section */}
            <View style={[styles.section, {marginBottom: 100}]}>
-             <Text style={styles.sectionTitle}>Support</Text>
+             <Text style={styles.sectionTitle}>{t('profile.support')}</Text>
              <View style={styles.sectionContent}>
-                 <SettingsRow icon="help" title="Help Center" isFirst onPress={() => console.log('Help Center')} />
-                 <SettingsRow icon="logout" title="Logout" isLast isDestructive onPress={handleLogout} />
+                 <SettingsRow icon="help" title={t('profile.helpCenter')} isFirst onPress={() => console.log('Help Center')} />
+                 <SettingsRow icon="logout" title={t('profile.logout')} isLast isDestructive onPress={handleLogout} />
              </View>
            </View>
 
         </ScrollView>
       </View>
-      <SettingsBottomNav />
+      <AppModal
+        visible={languagePickerVisible}
+        onClose={() => setLanguagePickerVisible(false)}
+        variant="bottom-sheet"
+        title={t('profile.language')}
+      >
+        {SUPPORTED_LANGUAGES.map((lang) => (
+          <TouchableOpacity
+            key={lang.code}
+            style={[styles.languageOption, language === lang.code && styles.languageOptionActive]}
+            onPress={() => {
+              setLanguage(lang.code);
+              setLanguagePickerVisible(false);
+            }}
+          >
+            <Text style={styles.languageFlag}>{lang.flag}</Text>
+            <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.nativeLabel}</Text>
+            {language === lang.code && (
+              <MaterialIcons name="check" size={20} color={Colors.primary} />
+            )}
+          </TouchableOpacity>
+        ))}
+      </AppModal>
+      <BottomNav activeTab="profile" />
     </SafeAreaView>
   );
 };
@@ -170,15 +201,6 @@ const ShareButton = ({icon, brandColor, label}) => {
         </TouchableOpacity>
     )
 }
-
-const SettingsBottomNav = () => (
-    <View style={[styles.bottomNav, { backgroundColor: useColorScheme() === 'dark' ? 'rgba(16, 34, 32, 0.95)' : 'rgba(246, 248, 248, 0.95)', borderColor: useColorScheme() === 'dark' ? '#1e293b' : '#e2e8f0' }]}>
-        <TouchableOpacity style={styles.navButton} onPress={() => router.push('/home-dashboard')}><MaterialIcons name="home" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Home</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}><MaterialIcons name="sports-esports" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Train</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}><MaterialIcons name="leaderboard" size={28} color="#9ca3af" /><Text style={[styles.navText, {color: '#9ca3af'}]}>Stats</Text></TouchableOpacity>
-        <TouchableOpacity style={styles.navButton}><MaterialIcons name="person" size={28} color={Colors.primary} /><Text style={[styles.navText, {color: Colors.primary}]}>Profile</Text></TouchableOpacity>
-    </View>
-);
 
 const styles = StyleSheet.create({
     flex1: { flex: 1 },
@@ -214,9 +236,10 @@ const styles = StyleSheet.create({
     shareButton: { alignItems: 'center', gap: 8 },
     shareButtonIcon: { width: 48, height: 48, borderRadius: 24, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
     shareButtonLabel: { fontSize: 10, fontWeight: '500', textTransform: 'uppercase', letterSpacing: 0.5, opacity: 0.7 },
-    bottomNav: { position: 'absolute', bottom: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', paddingTop: 12, paddingBottom: Platform.OS === 'ios' ? 32 : 12, borderTopWidth: 1 },
-    navButton: { alignItems: 'center', gap: 4 },
-    navText: { fontSize: 10, fontWeight: '500'},
+    languageOption: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+    languageOptionActive: { backgroundColor: 'rgba(17, 212, 196, 0.1)' },
+    languageFlag: { fontSize: 24 },
+    languageLabel: { fontSize: 16, fontWeight: '500', flex: 1 },
 });
 
 export default ProfileSettingsInviteScreen;

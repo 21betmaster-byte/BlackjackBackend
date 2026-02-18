@@ -15,13 +15,19 @@ import { MaterialIcons } from '@expo/vector-icons';
 import { Colors } from '../constants/theme';
 import { router } from 'expo-router';
 import config from '../config';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../i18n';
+import { useLanguage } from '../contexts/LanguageContext';
+import AppModal from '../components/ui/AppModal';
 
 const LanguageThemeSetupScreen = () => {
   const colorScheme = useColorScheme();
   const themeColors = Colors[colorScheme ?? 'light'];
   const { themePreference, setThemePreference } = useTheme();
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
 
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
+  const [languagePickerVisible, setLanguagePickerVisible] = useState(false);
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'dark'>(
     themePreference === 'system' ? (colorScheme || 'dark') : themePreference
   );
@@ -58,9 +64,9 @@ const LanguageThemeSetupScreen = () => {
             <View style={[styles.heroIconWrapper, { backgroundColor: 'rgba(17, 212, 196, 0.2)' }]}>
               <MaterialIcons name="settings-accessibility" size={32} color={Colors.primary} />
             </View>
-            <Text style={[styles.h2, { color: themeColors.text }]}>Preferences</Text>
+            <Text style={[styles.h2, { color: themeColors.text }]}>{t('setup.preferences')}</Text>
             <Text style={[styles.p, { color: colorScheme === 'dark' ? '#94a3b8' : '#475569' }]}>
-              Tailor your training experience to your needs.
+              {t('setup.preferencesDesc')}
             </Text>
           </View>
 
@@ -70,7 +76,7 @@ const LanguageThemeSetupScreen = () => {
             <View style={styles.inputGroup}>
               <View style={styles.labelWithIcon}>
                 <MaterialIcons name="language" size={20} color={Colors.primary} />
-                <Text style={[styles.inputLabel, { color: themeColors.text }]}>Preferred Language</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>{t('setup.preferredLanguage')}</Text>
               </View>
               <TouchableOpacity
                 style={[
@@ -80,15 +86,15 @@ const LanguageThemeSetupScreen = () => {
                     shadowColor: colorScheme === 'dark' ? 'transparent' : 'rgba(0,0,0,0.05)',
                   },
                 ]}
-                onPress={() => console.log('Open Language Picker')}
+                onPress={() => setLanguagePickerVisible(true)}
               >
                 <Text style={[styles.selectText, { color: themeColors.text }]}>
-                  {selectedLanguage === 'en' ? 'English (US)' : selectedLanguage}
+                  {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel ?? 'English'}
                 </Text>
                 <MaterialIcons name="expand-more" size={24} color={'#94a3b8'} />
               </TouchableOpacity>
               <Text style={[styles.hintText, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-                This will change the interface and lesson content language.
+                {t('setup.languageHint')}
               </Text>
             </View>
 
@@ -96,7 +102,7 @@ const LanguageThemeSetupScreen = () => {
             <View style={styles.inputGroup}>
               <View style={styles.labelWithIcon}>
                 <MaterialIcons name="contrast" size={20} color={Colors.primary} />
-                <Text style={[styles.inputLabel, { color: themeColors.text }]}>App Theme</Text>
+                <Text style={[styles.inputLabel, { color: themeColors.text }]}>{t('setup.appTheme')}</Text>
               </View>
               <View
                 style={[
@@ -127,7 +133,7 @@ const LanguageThemeSetupScreen = () => {
                       selectedTheme !== 'light' && { color: colorScheme === 'dark' ? '#a1a1aa' : '#475569' },
                     ]}
                   >
-                    Light
+                    {t('setup.light')}
                   </Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -150,7 +156,7 @@ const LanguageThemeSetupScreen = () => {
                       selectedTheme !== 'dark' && { color: colorScheme === 'dark' ? '#a1a1aa' : '#475569' },
                     ]}
                   >
-                    Dark
+                    {t('setup.dark')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -169,9 +175,9 @@ const LanguageThemeSetupScreen = () => {
               <View style={styles.accessibilityToggleLeft}>
                 <MaterialIcons name="visibility" size={24} color={Colors.primary} />
                 <View>
-                  <Text style={[styles.toggleTitle, { color: themeColors.text }]}>High Contrast Mode</Text>
+                  <Text style={[styles.toggleTitle, { color: themeColors.text }]}>{t('setup.highContrastMode')}</Text>
                   <Text style={[styles.toggleSubtitle, { color: colorScheme === 'dark' ? '#a1a1aa' : '#64748b' }]}>
-                    Improves readability of text
+                    {t('setup.highContrastModeDesc')}
                   </Text>
                 </View>
               </View>
@@ -188,10 +194,35 @@ const LanguageThemeSetupScreen = () => {
           {/* Accessibility Footer Hint */}
           <View style={styles.footerHintContainer}>
             <Text style={[styles.footerHintText, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-              You can always change these settings later in your Account Profile.
+              {t('setup.settingsHint')}
             </Text>
           </View>
         </ScrollView>
+
+        {/* Language Picker Modal */}
+        <AppModal
+          visible={languagePickerVisible}
+          onClose={() => setLanguagePickerVisible(false)}
+          variant="bottom-sheet"
+          title={t('setup.preferredLanguage')}
+        >
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <TouchableOpacity
+              key={lang.code}
+              style={[styles.languageOption, language === lang.code && styles.languageOptionActive]}
+              onPress={() => {
+                setLanguage(lang.code);
+                setLanguagePickerVisible(false);
+              }}
+            >
+              <Text style={styles.languageFlag}>{lang.flag}</Text>
+              <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.nativeLabel}</Text>
+              {language === lang.code && (
+                <MaterialIcons name="check" size={20} color={Colors.primary} />
+              )}
+            </TouchableOpacity>
+          ))}
+        </AppModal>
 
         {/* Fixed Footer Action */}
         <View
@@ -204,7 +235,7 @@ const LanguageThemeSetupScreen = () => {
           ]}
         >
           <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <Text style={styles.continueButtonText}>Continue to Training</Text>
+            <Text style={styles.continueButtonText}>{t('setup.continueToTraining')}</Text>
             <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
           </TouchableOpacity>
         </View>
@@ -400,6 +431,26 @@ const styles = StyleSheet.create({
     color: Colors.dark.background,
     fontSize: 18,
     fontWeight: 'bold',
+  },
+  languageOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderBottomWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  languageOptionActive: {
+    backgroundColor: 'rgba(17, 212, 196, 0.1)',
+  },
+  languageFlag: {
+    fontSize: 24,
+  },
+  languageLabel: {
+    fontSize: 16,
+    fontWeight: '500',
+    flex: 1,
   },
 });
 

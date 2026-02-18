@@ -2,21 +2,25 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Hand, scoreHand } from '../game/engine';
 import PlayingCard from './PlayingCard';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   hand?: Hand;
   isActive: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
   betAmount: number;
   handLabel?: string;
+  chipConfigs?: { value: number; color: string }[];
 };
 
-export default function BettingCircle({ hand, isActive, onPress, betAmount, handLabel }: Props) {
+export default function BettingCircle({ hand, isActive, onPress, onLongPress, betAmount, handLabel, chipConfigs }: Props) {
+  const { t } = useTranslation();
   const hasCards = hand && hand.cards.length > 0;
   const score = hasCards ? scoreHand(hand.cards) : null;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7} style={styles.container}>
+    <TouchableOpacity onPress={onPress} onLongPress={onLongPress} activeOpacity={0.7} style={styles.container}>
       {/* Cards */}
       {hasCards && (
         <View style={styles.cardsContainer}>
@@ -40,7 +44,7 @@ export default function BettingCircle({ hand, isActive, onPress, betAmount, hand
             hand?.status === 'busted' && styles.scoreTextBusted,
             hand?.status === 'blackjack' && styles.scoreTextBlackjack,
           ]}>
-            {hand?.status === 'busted' ? 'BUST' : hand?.status === 'blackjack' ? 'BJ!' : score.display}
+            {hand?.status === 'busted' ? t('game.bust') : hand?.status === 'blackjack' ? t('game.bj') : score.display}
           </Text>
         </View>
       )}
@@ -49,12 +53,22 @@ export default function BettingCircle({ hand, isActive, onPress, betAmount, hand
       <View style={[styles.circle, isActive && styles.circleActive]}>
         {betAmount > 0 ? (
           <View style={styles.chipStack}>
-            <View style={[styles.chip, { backgroundColor: chipColor(betAmount) }]}>
-              <Text style={styles.chipText}>${betAmount}</Text>
-            </View>
+            {decomposeChips(betAmount, chipConfigs).map((chip, idx, arr) => (
+              <View
+                key={idx}
+                style={[
+                  styles.chip,
+                  { backgroundColor: chip.color, marginTop: idx > 0 ? -6 : 0, zIndex: idx },
+                ]}
+              >
+                {idx === arr.length - 1 && (
+                  <Text style={styles.chipText}>${betAmount}</Text>
+                )}
+              </View>
+            ))}
           </View>
         ) : (
-          <Text style={styles.emptyText}>BET</Text>
+          <Text style={styles.emptyText}>{t('game.bet')}</Text>
         )}
       </View>
 
@@ -63,12 +77,29 @@ export default function BettingCircle({ hand, isActive, onPress, betAmount, hand
   );
 }
 
-function chipColor(amount: number): string {
-  if (amount >= 100) return '#1a202c';
-  if (amount >= 50) return '#dd6b20';
-  if (amount >= 25) return '#276749';
-  if (amount >= 10) return '#2b6cb0';
-  return '#c53030';
+const DEFAULT_CHIP_CONFIGS = [
+  { value: 100, color: '#1a202c' },
+  { value: 50, color: '#dd6b20' },
+  { value: 25, color: '#276749' },
+  { value: 10, color: '#2b6cb0' },
+  { value: 5, color: '#c53030' },
+];
+
+function decomposeChips(amount: number, configs?: { value: number; color: string }[]): { value: number; color: string }[] {
+  const chips = configs && configs.length > 0
+    ? [...configs].sort((a, b) => b.value - a.value)
+    : DEFAULT_CHIP_CONFIGS;
+  const result: { value: number; color: string }[] = [];
+  let remaining = amount;
+
+  for (const chip of chips) {
+    while (remaining >= chip.value && result.length < 8) {
+      result.push(chip);
+      remaining -= chip.value;
+    }
+  }
+
+  return result.length > 0 ? result : [{ value: amount, color: '#c53030' }];
 }
 
 const styles = StyleSheet.create({
@@ -85,10 +116,10 @@ const styles = StyleSheet.create({
   },
   scoreBubble: {
     backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: 12,
-    minWidth: 36,
+    paddingHorizontal: 14,
+    paddingVertical: 4,
+    borderRadius: 14,
+    minWidth: 44,
     alignItems: 'center',
   },
   scoreBubbleBusted: {
@@ -99,7 +130,7 @@ const styles = StyleSheet.create({
   },
   scoreText: {
     color: '#fff',
-    fontSize: 13,
+    fontSize: 18,
     fontWeight: 'bold',
   },
   scoreTextBusted: {

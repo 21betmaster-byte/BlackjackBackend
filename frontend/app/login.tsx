@@ -8,9 +8,6 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Modal,
-  KeyboardAvoidingView,
-  Platform,
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -22,14 +19,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
+import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../i18n';
+import { useLanguage } from '../contexts/LanguageContext';
+import Button from '../components/ui/Button';
+import AppInput from '../components/ui/AppInput';
+import AppModal from '../components/ui/AppModal';
 
 WebBrowser.maybeCompleteAuthSession();
-
-const LANGUAGES = [
-  { code: 'en', flag: '🇬🇧', label: 'English' },
-  { code: 'zh', flag: '🇨🇳', label: '中文' },
-  { code: 'hi', flag: '🇮🇳', label: 'हिन्दी' },
-];
 
 const LoginScreen = () => {
   const colorScheme = useColorScheme();
@@ -37,10 +34,10 @@ const LoginScreen = () => {
 
   const { login, setMandatoryDetailsCompleted } = useAuth();
   const toast = useToast();
+  const { t } = useTranslation();
+  const { language, setLanguage } = useLanguage();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
-  const [selectedLanguage, setSelectedLanguage] = useState('en');
   const [languageDropdownVisible, setLanguageDropdownVisible] = useState(false);
   const [loading, setLoading] = useState(false);
 
@@ -55,7 +52,7 @@ const LoginScreen = () => {
   const [fpLoading, setFpLoading] = useState(false);
   const [fpShowPassword, setFpShowPassword] = useState(false);
 
-  const selectedFlag = LANGUAGES.find(l => l.code === selectedLanguage)?.flag ?? '🇬🇧';
+  const selectedFlag = SUPPORTED_LANGUAGES.find(l => l.code === language)?.flag ?? '🇬🇧';
 
   const [request, response, promptAsync] = Google.useAuthRequest({
     webClientId: GOOGLE_WEB_CLIENT_ID,
@@ -95,7 +92,7 @@ const LoginScreen = () => {
       }
     } catch (error) {
       console.error('Google Sign-In error:', error);
-      toast.show('Google Sign-In failed. Please try again.', 'error');
+      toast.show(t('auth.googleSignInFailed'), 'error');
     } finally {
       setLoading(false);
     }
@@ -113,18 +110,18 @@ const LoginScreen = () => {
         if (response.data.mandatory_details_completed) {
           await setMandatoryDetailsCompleted(true);
         }
-        toast.show('Logged in successfully!', 'success');
+        toast.show(t('auth.loginSuccess'), 'success');
         // _layout.tsx useEffect handles navigation based on auth state
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         if (error.response.status === 401) {
-          toast.show('Invalid credentials. Please try again.', 'error');
+          toast.show(t('auth.invalidCredentials'), 'error');
         } else {
-          toast.show('An unexpected error occurred during login.', 'error');
+          toast.show(t('auth.unexpectedLoginError'), 'error');
         }
       } else {
-        toast.show('Network error or unexpected issue.', 'error');
+        toast.show(t('auth.networkError'), 'error');
       }
       console.error('Login error:', error);
     } finally {
@@ -144,7 +141,7 @@ const LoginScreen = () => {
 
   const handleForgotPasswordSendOtp = async () => {
     if (!fpEmail.trim()) {
-      toast.show('Please enter your email.', 'error');
+      toast.show(t('auth.enterEmail'), 'error');
       return;
     }
     try {
@@ -155,14 +152,14 @@ const LoginScreen = () => {
         setFpOtp(resp.data.dev_otp);
         toast.show(`Dev OTP: ${resp.data.dev_otp}`, 'info');
       } else {
-        toast.show('OTP sent to your email.', 'success');
+        toast.show(t('auth.otpSent'), 'success');
       }
       setForgotStep(2);
     } catch (error) {
       if (axios.isAxiosError(error) && error.response?.status === 429) {
-        toast.show('Too many requests. Try again later.', 'error');
+        toast.show(t('auth.tooManyRequests'), 'error');
       } else {
-        toast.show('Failed to send OTP.', 'error');
+        toast.show(t('auth.failedSendOtp'), 'error');
       }
     } finally {
       setFpLoading(false);
@@ -171,7 +168,7 @@ const LoginScreen = () => {
 
   const handleVerifyOtp = async () => {
     if (fpOtp.length !== 6) {
-      toast.show('Please enter the 6-digit OTP.', 'error');
+      toast.show(t('auth.enter6Digit'), 'error');
       return;
     }
     try {
@@ -183,7 +180,7 @@ const LoginScreen = () => {
       setFpResetToken(resp.data.reset_token);
       setForgotStep(3);
     } catch (error) {
-      toast.show('Invalid or expired OTP.', 'error');
+      toast.show(t('auth.invalidOtp'), 'error');
     } finally {
       setFpLoading(false);
     }
@@ -191,11 +188,11 @@ const LoginScreen = () => {
 
   const handleResetPassword = async () => {
     if (fpNewPassword.length < 8) {
-      toast.show('Password must be at least 8 characters.', 'error');
+      toast.show(t('auth.passwordTooShort'), 'error');
       return;
     }
     if (fpNewPassword !== fpConfirmPassword) {
-      toast.show('Passwords do not match.', 'error');
+      toast.show(t('auth.passwordsMismatch'), 'error');
       return;
     }
     try {
@@ -210,10 +207,10 @@ const LoginScreen = () => {
           await setMandatoryDetailsCompleted(true);
         }
         setForgotPasswordVisible(false);
-        toast.show('Password reset successful!', 'success');
+        toast.show(t('auth.passwordResetSuccess'), 'success');
       }
     } catch (error) {
-      toast.show('Failed to reset password.', 'error');
+      toast.show(t('auth.failedResetPassword'), 'error');
     } finally {
       setFpLoading(false);
     }
@@ -253,12 +250,12 @@ const LoginScreen = () => {
             backgroundColor: colorScheme === 'dark' ? '#1e293b' : 'white',
             borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
           }]}>
-            {LANGUAGES.map((lang) => (
+            {SUPPORTED_LANGUAGES.map((lang) => (
               <TouchableOpacity
                 key={lang.code}
                 style={styles.languageOption}
                 onPress={() => {
-                  setSelectedLanguage(lang.code);
+                  setLanguage(lang.code);
                   setLanguageDropdownVisible(false);
                 }}
               >
@@ -278,7 +275,7 @@ const LoginScreen = () => {
               </View>
             </View>
             <Text style={[styles.heroTitle, { color: 'white' }]}>{config.appName}</Text>
-            <Text style={[styles.heroSubtitle, { color: Colors.primary }]}>Login to Master Casino Table Games</Text>
+            <Text style={[styles.heroSubtitle, { color: Colors.primary }]}>{t('auth.loginTitle')}</Text>
           </View>
         </View>
 
@@ -304,7 +301,7 @@ const LoginScreen = () => {
                 style={styles.googleIcon}
               />
               <Text style={[styles.socialButtonText, { color: themeColors.text }]}>
-                Continue with Google
+                {t('auth.continueWithGoogle')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -313,105 +310,62 @@ const LoginScreen = () => {
           <View style={styles.dividerContainer}>
             <View style={[styles.dividerLine, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }]} />
             <Text style={[styles.dividerText, { color: colorScheme === 'dark' ? '#94a3b8' : '#94a3b8' }]}>
-              OR
+              {t('common.or')}
             </Text>
             <View style={[styles.dividerLine, { backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }]} />
           </View>
 
           {/* Manual Form */}
           <View style={styles.formContainer}>
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
-                Email Address
-              </Text>
-              <TextInput
-                style={[
-                  styles.textInput,
-                  {
-                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
-                    color: themeColors.text,
-                  },
-                ]}
-                placeholder="name@example.com"
-                placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={email}
-                onChangeText={setEmail}
-              />
-            </View>
+            <AppInput
+              type="email"
+              label={t('auth.emailLabel')}
+              placeholder={t('auth.emailPlaceholder')}
+              value={email}
+              onChangeText={setEmail}
+            />
 
-            <View style={styles.inputGroup}>
-              <Text style={[styles.inputLabel, { color: colorScheme === 'dark' ? '#d1d5db' : '#4b5563' }]}>
-                Password
-              </Text>
-              <View style={styles.passwordInputContainer}>
-                <TextInput
-                  style={[
-                    styles.textInput,
-                    styles.passwordTextInput,
-                    {
-                      borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                      backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : 'white',
-                      color: themeColors.text,
-                    },
-                  ]}
-                  placeholder="••••••••"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                  secureTextEntry={!showPassword}
-                  value={password}
-                  onChangeText={setPassword}
-                />
-                <TouchableOpacity
-                  style={styles.visibilityToggle}
-                  onPress={() => setShowPassword(!showPassword)}
-                >
-                  <MaterialIcons
-                    name={showPassword ? 'visibility' : 'visibility-off'}
-                    size={24}
-                    color={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'}
-                  />
-                </TouchableOpacity>
-              </View>
-            </View>
+            <AppInput
+              type="password"
+              label={t('auth.passwordLabel')}
+              placeholder={t('auth.passwordPlaceholder')}
+              value={password}
+              onChangeText={setPassword}
+            />
 
             <TouchableOpacity onPress={openForgotPassword} style={styles.forgotPasswordLink}>
-              <Text style={[styles.forgotPasswordText, { color: Colors.primary }]}>Forgot Password?</Text>
+              <Text style={[styles.forgotPasswordText, { color: Colors.primary }]}>{t('auth.forgotPassword')}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
-              style={[styles.primaryButton, loading && { opacity: 0.6 }]}
+            <Button
+              title={t('auth.login')}
               onPress={handleLogin}
-              disabled={loading}
-            >
-              {loading ? (
-                <ActivityIndicator color={Colors.dark.background} />
-              ) : (
-                <Text style={styles.primaryButtonText}>Log In</Text>
-              )}
-            </TouchableOpacity>
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={loading}
+            />
           </View>
 
           {/* Terms & Signup Link */}
           <View style={styles.termsAndLoginContainer}>
             <Text style={[styles.termsText, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-              By logging in, you agree to our
+              {t('auth.termsPrefix')}
               <Text style={[styles.linkText, { color: Colors.primary }]} onPress={() => console.log('Terms of Service')}>
-                {' '}Terms of Service
+                {' '}{t('auth.termsOfService')}
               </Text>
-              {' '}and
+              {' '}{t('auth.and')}
               <Text style={[styles.linkText, { color: Colors.primary }]} onPress={() => console.log('Privacy Policy')}>
-                {' '}Privacy Policy
+                {' '}{t('auth.privacyPolicy')}
               </Text>
               .
             </Text>
             <View style={styles.loginLinkContainer}>
               <Text style={[styles.loginText, { color: colorScheme === 'dark' ? '#94a3b8' : '#475569' }]}>
-                Don't have an account?
+                {t('auth.noAccount')}
               </Text>
               <TouchableOpacity onPress={() => router.push('/signup')}>
-                <Text style={[styles.linkText, styles.loginLink, { color: Colors.primary }]}>Sign Up</Text>
+                <Text style={[styles.linkText, styles.loginLink, { color: Colors.primary }]}>{t('auth.signup')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -422,132 +376,124 @@ const LoginScreen = () => {
       </View>
 
       {/* Forgot Password Modal */}
-      <Modal
+      <AppModal
         visible={forgotPasswordVisible}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setForgotPasswordVisible(false)}
+        onClose={() => setForgotPasswordVisible(false)}
+        variant="bottom-sheet"
+        title={forgotStep === 1 ? t('auth.forgotPasswordTitle') : forgotStep === 2 ? t('auth.enterOtp') : t('auth.newPassword')}
       >
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalOverlay}>
-          <View style={[styles.modalCard, { backgroundColor: colorScheme === 'dark' ? Colors.dark.card : 'white' }]}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: themeColors.text }]}>
-                {forgotStep === 1 ? 'Forgot Password' : forgotStep === 2 ? 'Enter OTP' : 'New Password'}
-              </Text>
-              <TouchableOpacity onPress={() => setForgotPasswordVisible(false)}>
-                <MaterialIcons name="close" size={24} color={themeColors.text} />
+        {forgotStep === 1 && (
+          <View style={styles.modalBody}>
+            <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+              {t('auth.sendVerification')}
+            </Text>
+            <TextInput
+              style={[styles.modalInput, {
+                borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                color: themeColors.text,
+              }]}
+              placeholder={t('auth.emailPlaceholder')}
+              placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+              keyboardType="email-address"
+              autoCapitalize="none"
+              value={fpEmail}
+              onChangeText={setFpEmail}
+            />
+            <Button
+              title={t('auth.sendOtp')}
+              onPress={handleForgotPasswordSendOtp}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={fpLoading}
+              style={{ marginTop: 4 }}
+            />
+          </View>
+        )}
+
+        {forgotStep === 2 && (
+          <View style={styles.modalBody}>
+            <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+              {t('auth.enterOtpCode', { email: fpEmail })}
+            </Text>
+            <TextInput
+              style={[styles.modalInput, styles.otpInput, {
+                borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                color: themeColors.text,
+              }]}
+              placeholder="000000"
+              placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+              keyboardType="number-pad"
+              maxLength={6}
+              value={fpOtp}
+              onChangeText={setFpOtp}
+            />
+            <Button
+              title={t('auth.verify')}
+              onPress={handleVerifyOtp}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={fpLoading}
+              style={{ marginTop: 4 }}
+            />
+            <TouchableOpacity onPress={handleForgotPasswordSendOtp} disabled={fpLoading}>
+              <Text style={[styles.resendText, { color: Colors.primary }]}>{t('auth.resendOtp')}</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {forgotStep === 3 && (
+          <View style={styles.modalBody}>
+            <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
+              {t('auth.enterNewPassword')}
+            </Text>
+            <View style={styles.modalPasswordContainer}>
+              <TextInput
+                style={[styles.modalInput, { paddingRight: 50,
+                  borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                  backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                  color: themeColors.text,
+                }]}
+                placeholder={t('auth.newPasswordPlaceholder')}
+                placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+                secureTextEntry={!fpShowPassword}
+                value={fpNewPassword}
+                onChangeText={setFpNewPassword}
+              />
+              <TouchableOpacity style={styles.modalVisibilityToggle} onPress={() => setFpShowPassword(!fpShowPassword)}>
+                <MaterialIcons name={fpShowPassword ? 'visibility' : 'visibility-off'} size={24} color={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'} />
               </TouchableOpacity>
             </View>
-
-            {forgotStep === 1 && (
-              <View style={styles.modalBody}>
-                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-                  Enter your email and we'll send you a verification code.
-                </Text>
-                <TextInput
-                  style={[styles.modalInput, {
-                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                    color: themeColors.text,
-                  }]}
-                  placeholder="name@example.com"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={fpEmail}
-                  onChangeText={setFpEmail}
-                />
-                <TouchableOpacity
-                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
-                  onPress={handleForgotPasswordSendOtp}
-                  disabled={fpLoading}
-                >
-                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Send OTP</Text>}
-                </TouchableOpacity>
-              </View>
+            <TextInput
+              style={[styles.modalInput, {
+                borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
+                backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
+                color: themeColors.text,
+              }]}
+              placeholder={t('auth.confirmPasswordPlaceholder')}
+              placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
+              secureTextEntry={!fpShowPassword}
+              value={fpConfirmPassword}
+              onChangeText={setFpConfirmPassword}
+            />
+            {fpConfirmPassword.length > 0 && fpConfirmPassword !== fpNewPassword && (
+              <Text style={styles.mismatchText}>{t('auth.passwordsMismatch')}</Text>
             )}
-
-            {forgotStep === 2 && (
-              <View style={styles.modalBody}>
-                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-                  Enter the 6-digit code sent to {fpEmail}
-                </Text>
-                <TextInput
-                  style={[styles.modalInput, styles.otpInput, {
-                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                    color: themeColors.text,
-                  }]}
-                  placeholder="000000"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                  keyboardType="number-pad"
-                  maxLength={6}
-                  value={fpOtp}
-                  onChangeText={setFpOtp}
-                />
-                <TouchableOpacity
-                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
-                  onPress={handleVerifyOtp}
-                  disabled={fpLoading}
-                >
-                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Verify</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity onPress={handleForgotPasswordSendOtp} disabled={fpLoading}>
-                  <Text style={[styles.resendText, { color: Colors.primary }]}>Resend OTP</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {forgotStep === 3 && (
-              <View style={styles.modalBody}>
-                <Text style={[styles.modalSubtitle, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
-                  Enter your new password.
-                </Text>
-                <View style={styles.modalPasswordContainer}>
-                  <TextInput
-                    style={[styles.modalInput, { paddingRight: 50,
-                      borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                      backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                      color: themeColors.text,
-                    }]}
-                    placeholder="New password"
-                    placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                    secureTextEntry={!fpShowPassword}
-                    value={fpNewPassword}
-                    onChangeText={setFpNewPassword}
-                  />
-                  <TouchableOpacity style={styles.modalVisibilityToggle} onPress={() => setFpShowPassword(!fpShowPassword)}>
-                    <MaterialIcons name={fpShowPassword ? 'visibility' : 'visibility-off'} size={24} color={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'} />
-                  </TouchableOpacity>
-                </View>
-                <TextInput
-                  style={[styles.modalInput, {
-                    borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.1)' : '#e2e8f0',
-                    backgroundColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.05)' : '#f8fafc',
-                    color: themeColors.text,
-                  }]}
-                  placeholder="Confirm password"
-                  placeholderTextColor={colorScheme === 'dark' ? '#a1a1aa' : '#6b7280'}
-                  secureTextEntry={!fpShowPassword}
-                  value={fpConfirmPassword}
-                  onChangeText={setFpConfirmPassword}
-                />
-                {fpConfirmPassword.length > 0 && fpConfirmPassword !== fpNewPassword && (
-                  <Text style={styles.mismatchText}>Passwords do not match</Text>
-                )}
-                <TouchableOpacity
-                  style={[styles.modalButton, fpLoading && { opacity: 0.6 }]}
-                  onPress={handleResetPassword}
-                  disabled={fpLoading}
-                >
-                  {fpLoading ? <ActivityIndicator color={Colors.dark.background} /> : <Text style={styles.modalButtonText}>Reset Password</Text>}
-                </TouchableOpacity>
-              </View>
-            )}
+            <Button
+              title={t('auth.resetPassword')}
+              onPress={handleResetPassword}
+              variant="primary"
+              size="lg"
+              fullWidth
+              loading={fpLoading}
+              style={{ marginTop: 4 }}
+            />
           </View>
-        </KeyboardAvoidingView>
-      </Modal>
+        )}
+      </AppModal>
     </SafeAreaView>
   );
 };
@@ -687,27 +633,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingHorizontal: 16,
   },
-  textInput: {
-    height: 56,
-    width: '100%',
-    borderRadius: 9999,
-    borderWidth: 1,
-    paddingHorizontal: 24,
-    fontSize: 16,
-  },
-  passwordInputContainer: {
-    position: 'relative',
-    width: '100%',
-    justifyContent: 'center',
-  },
-  passwordTextInput: {
-    paddingRight: 60,
-  },
-  visibilityToggle: {
-    position: 'absolute',
-    right: 20,
-    padding: 4,
-  },
   primaryButton: {
     marginTop: 16,
     height: 56,
@@ -802,33 +727,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
   },
-  modalOverlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    backgroundColor: 'rgba(0,0,0,0.5)',
-  },
-  modalCard: {
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 10,
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
   modalBody: {
     gap: 16,
   },
@@ -848,19 +746,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
     letterSpacing: 8,
-  },
-  modalButton: {
-    height: 56,
-    borderRadius: 9999,
-    backgroundColor: Colors.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 4,
-  },
-  modalButtonText: {
-    color: Colors.dark.background,
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   resendText: {
     textAlign: 'center',

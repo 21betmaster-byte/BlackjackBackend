@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   Image,
   ActivityIndicator,
 } from 'react-native';
@@ -23,6 +22,8 @@ import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+import ListOption from '../components/ui/ListOption';
 import AppInput from '../components/ui/AppInput';
 import AppModal from '../components/ui/AppModal';
 
@@ -225,23 +226,11 @@ const LoginScreen = () => {
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Top App Bar (iOS style) */}
         <View style={styles.topAppBar}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={() => router.back()} // Go back
-          >
-            <MaterialIcons
-              name="arrow-back-ios"
-              size={24}
-              color={themeColors.text}
-            />
-          </TouchableOpacity>
+          <IconButton icon="arrow-back-ios" onPress={() => router.back()} iconColor={themeColors.text} size="lg" />
           <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
-          <TouchableOpacity
-            style={styles.languageButton}
-            onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
-          >
+          <IconButton onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)} size="lg">
             <Text style={styles.languageFlag}>{selectedFlag}</Text>
-          </TouchableOpacity>
+          </IconButton>
         </View>
 
         {/* Language Dropdown */}
@@ -251,17 +240,15 @@ const LoginScreen = () => {
             borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
           }]}>
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <TouchableOpacity
+              <ListOption
                 key={lang.code}
-                style={styles.languageOption}
+                leadingText={lang.flag}
+                label={lang.label}
                 onPress={() => {
                   setLanguage(lang.code);
                   setLanguageDropdownVisible(false);
                 }}
-              >
-                <Text style={styles.languageFlag}>{lang.flag}</Text>
-                <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.label}</Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         )}
@@ -283,27 +270,15 @@ const LoginScreen = () => {
         <View style={styles.contentArea}>
           {/* Social Login */}
           <View style={styles.socialLoginContainer}>
-            <TouchableOpacity
-              style={[
-                styles.socialButton,
-                {
-                  backgroundColor: colorScheme === 'dark' ? themeColors.background : 'white',
-                  borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-                },
-              ]}
+            <Button
+              title={t('auth.continueWithGoogle')}
               onPress={handleGoogleSignIn}
               disabled={loading}
-            >
-              <Image
-                source={{
-                  uri: 'https://img.icons8.com/color/48/000000/google-logo.png',
-                }}
-                style={styles.googleIcon}
-              />
-              <Text style={[styles.socialButtonText, { color: themeColors.text }]}>
-                {t('auth.continueWithGoogle')}
-              </Text>
-            </TouchableOpacity>
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconElement={<Image source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} style={styles.googleIcon} />}
+            />
           </View>
 
           {/* Divider */}
@@ -333,9 +308,7 @@ const LoginScreen = () => {
               onChangeText={setPassword}
             />
 
-            <TouchableOpacity onPress={openForgotPassword} style={styles.forgotPasswordLink}>
-              <Text style={[styles.forgotPasswordText, { color: Colors.primary }]}>{t('auth.forgotPassword')}</Text>
-            </TouchableOpacity>
+            <Button title={t('auth.forgotPassword')} onPress={openForgotPassword} variant="ghost" size="sm" style={styles.forgotPasswordLink} />
 
             <Button
               title={t('auth.login')}
@@ -364,9 +337,7 @@ const LoginScreen = () => {
               <Text style={[styles.loginText, { color: colorScheme === 'dark' ? '#94a3b8' : '#475569' }]}>
                 {t('auth.noAccount')}
               </Text>
-              <TouchableOpacity onPress={() => router.push('/signup')}>
-                <Text style={[styles.linkText, styles.loginLink, { color: Colors.primary }]}>{t('auth.signup')}</Text>
-              </TouchableOpacity>
+              <Button title={t('auth.signup')} onPress={() => router.push('/signup')} variant="ghost" size="sm" />
             </View>
           </View>
         </View>
@@ -439,9 +410,7 @@ const LoginScreen = () => {
               loading={fpLoading}
               style={{ marginTop: 4 }}
             />
-            <TouchableOpacity onPress={handleForgotPasswordSendOtp} disabled={fpLoading}>
-              <Text style={[styles.resendText, { color: Colors.primary }]}>{t('auth.resendOtp')}</Text>
-            </TouchableOpacity>
+            <Button title={t('auth.resendOtp')} onPress={handleForgotPasswordSendOtp} variant="ghost" size="sm" disabled={fpLoading} />
           </View>
         )}
 
@@ -463,9 +432,7 @@ const LoginScreen = () => {
                 value={fpNewPassword}
                 onChangeText={setFpNewPassword}
               />
-              <TouchableOpacity style={styles.modalVisibilityToggle} onPress={() => setFpShowPassword(!fpShowPassword)}>
-                <MaterialIcons name={fpShowPassword ? 'visibility' : 'visibility-off'} size={24} color={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'} />
-              </TouchableOpacity>
+              <IconButton icon={fpShowPassword ? 'visibility' : 'visibility-off'} onPress={() => setFpShowPassword(!fpShowPassword)} iconColor={colorScheme === 'dark' ? '#a1a1aa' : '#94a3b8'} size="sm" style={styles.modalVisibilityToggle} />
             </View>
             <TextInput
               style={[styles.modalInput, {

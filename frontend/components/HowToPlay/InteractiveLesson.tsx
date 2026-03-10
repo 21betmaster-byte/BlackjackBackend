@@ -3,7 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   Dimensions,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -244,20 +243,15 @@ export default function InteractiveLesson({ onComplete }: Props) {
               {['hit', 'stand', 'double', 'split'].map(action => {
                 const isExpected = action === currentAction;
                 return (
-                  <TouchableOpacity
+                  <Button
                     key={action}
-                    style={[
-                      styles.actionBtn,
-                      !isExpected && styles.actionBtnDisabled,
-                      isExpected && styles.actionBtnHighlighted,
-                    ]}
+                    title={t(`game.${action}`)}
                     onPress={() => handleAction(action)}
+                    variant={isExpected ? 'primary' : 'action'}
+                    size="md"
                     disabled={!isExpected}
-                  >
-                    <Text style={[styles.actionBtnText, isExpected && { color: Colors.dark.background }]}>
-                      {t(`game.${action}`)}
-                    </Text>
-                  </TouchableOpacity>
+                    style={{ flex: 1, borderRadius: 12 }}
+                  />
                 );
               })}
             </View>

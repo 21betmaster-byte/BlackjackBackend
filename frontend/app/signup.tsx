@@ -4,7 +4,6 @@ import {
   SafeAreaView,
   View,
   Text,
-  TouchableOpacity,
   Image,
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -22,6 +21,8 @@ import { SUPPORTED_LANGUAGES } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import Button from '../components/ui/Button';
 import AppInput from '../components/ui/AppInput';
+import IconButton from '../components/ui/IconButton';
+import ListOption from '../components/ui/ListOption';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -119,16 +120,11 @@ const SignUpScreen = () => {
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Top App Bar */}
         <View style={styles.topAppBar}>
-          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-            <MaterialIcons name="arrow-back-ios" size={24} color={themeColors.text} />
-          </TouchableOpacity>
+          <IconButton icon="arrow-back-ios" onPress={() => router.back()} iconColor={themeColors.text} size="lg" />
           <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
-          <TouchableOpacity
-            style={styles.languageButton}
-            onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)}
-          >
+          <IconButton onPress={() => setLanguageDropdownVisible(!languageDropdownVisible)} size="lg">
             <Text style={styles.languageFlag}>{selectedFlag}</Text>
-          </TouchableOpacity>
+          </IconButton>
         </View>
 
         {/* Language Dropdown */}
@@ -138,17 +134,15 @@ const SignUpScreen = () => {
             borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
           }]}>
             {SUPPORTED_LANGUAGES.map((lang) => (
-              <TouchableOpacity
+              <ListOption
                 key={lang.code}
-                style={styles.languageOption}
+                leadingText={lang.flag}
+                label={lang.nativeLabel}
                 onPress={() => {
                   setLanguage(lang.code);
                   setLanguageDropdownVisible(false);
                 }}
-              >
-                <Text style={styles.languageFlag}>{lang.flag}</Text>
-                <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.nativeLabel}</Text>
-              </TouchableOpacity>
+              />
             ))}
           </View>
         )}
@@ -170,25 +164,15 @@ const SignUpScreen = () => {
         <View style={styles.contentArea}>
           {/* Social Login */}
           <View style={styles.socialLoginContainer}>
-            <TouchableOpacity
-              style={[
-                styles.socialButton,
-                {
-                  backgroundColor: colorScheme === 'dark' ? themeColors.background : 'white',
-                  borderColor: colorScheme === 'dark' ? 'rgba(255,255,255,0.2)' : '#e2e8f0',
-                },
-              ]}
+            <Button
+              title={t('auth.continueWithGoogle')}
               onPress={handleGoogleSignIn}
               disabled={loading}
-            >
-              <Image
-                source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }}
-                style={styles.googleIcon}
-              />
-              <Text style={[styles.socialButtonText, { color: themeColors.text }]}>
-                {t('auth.continueWithGoogle')}
-              </Text>
-            </TouchableOpacity>
+              variant="outline"
+              size="lg"
+              fullWidth
+              iconElement={<Image source={{ uri: 'https://img.icons8.com/color/48/000000/google-logo.png' }} style={styles.googleIcon} />}
+            />
           </View>
 
           {/* Divider */}
@@ -243,9 +227,7 @@ const SignUpScreen = () => {
               <Text style={[styles.loginText, { color: colorScheme === 'dark' ? '#94a3b8' : '#475569' }]}>
                 {t('auth.hasAccount')}
               </Text>
-              <TouchableOpacity onPress={() => router.push('/login')}>
-                <Text style={[styles.linkText, styles.loginLink, { color: Colors.primary }]}>{t('auth.login')}</Text>
-              </TouchableOpacity>
+              <Button title={t('auth.login')} onPress={() => router.push('/login')} variant="ghost" size="sm" />
             </View>
           </View>
         </View>

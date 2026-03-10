@@ -1,18 +1,42 @@
 import json
 from datetime import datetime
 from utils.database import get_stats_table
+from utils.auth import decode_access_token
+
+
+def _get_user_id_from_token(event):
+    """Extract user ID (sub) from the Authorization Bearer token."""
+    auth_header = (
+        event.get("headers", {}).get("authorization", "")
+        or event.get("headers", {}).get("Authorization", "")
+    )
+    if not auth_header.startswith("Bearer "):
+        return None
+    token = auth_header[7:]
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    return payload.get("sub")
+
+
+VALID_RESULTS = {"win", "loss", "push", "training_session"}
+
 
 # --- Lambda Handler ---
 def save(event, context):
     try:
-        # The user ID should be extracted from the authorizer context
-        user_id = event["requestContext"]["authorizer"]["jwt"]["claims"]["sub"]
+        user_id = _get_user_id_from_token(event)
+        if not user_id:
+            return {
+                "statusCode": 401,
+                "body": json.dumps({"detail": "Unauthorized"}),
+            }
 
         body = json.loads(event["body"])
         result = body.get("result")
         mistakes = body.get("mistakes")
 
-        if result not in ["win", "loss", "push"] or not isinstance(mistakes, int):
+        if result not in VALID_RESULTS or not isinstance(mistakes, int):
             return {
                 "statusCode": 400,
                 "body": json.dumps({"detail": "Invalid stats data."}),
@@ -32,6 +56,8 @@ def save(event, context):
             item["hands_played"] = body["hands_played"]
         if "details" in body and isinstance(body["details"], dict):
             item["details"] = body["details"]
+        if "training_decisions" in body and isinstance(body["training_decisions"], list):
+            item["training_decisions"] = body["training_decisions"]
 
         table = get_stats_table()
         table.put_item(Item=item)
@@ -41,11 +67,6 @@ def save(event, context):
             "body": json.dumps({"status": "saved"}),
         }
 
-    except KeyError:
-        return {
-            "statusCode": 401,
-            "body": json.dumps({"detail": "Unauthorized"}),
-        }
     except Exception as e:
         print(f"Save stats error: {e}")
         return {

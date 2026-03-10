@@ -3,16 +3,15 @@ import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
   SafeAreaView,
 } from 'react-native';
-import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { Colors } from '../constants/theme';
 import { useTranslation } from 'react-i18next';
 import SwipeableInstructionCards from '../components/HowToPlay/SwipeableInstructionCards';
 import InteractiveLesson from '../components/HowToPlay/InteractiveLesson';
+import IconButton from '../components/ui/IconButton';
 
 type Phase = 'intro' | 'lessons';
 
@@ -38,9 +37,7 @@ export default function HowToPlayScreen() {
     <SafeAreaView style={[styles.safeArea, { backgroundColor: isDark ? Colors.dark.background : Colors.light.background }]}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-          <MaterialIcons name="arrow-back" size={24} color={isDark ? '#fff' : '#11181C'} />
-        </TouchableOpacity>
+        <IconButton icon="arrow-back" onPress={handleBack} iconColor={isDark ? '#fff' : '#11181C'} />
         <Text style={[styles.headerTitle, { color: isDark ? '#fff' : '#11181C' }]}>
           {t('howToPlay.title')}
         </Text>

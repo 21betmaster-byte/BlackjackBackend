@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Platform,
   ActivityIndicator,
@@ -21,6 +20,8 @@ import { API_URL } from '../config';
 import CountryPicker from '../components/ui/CountryPicker';
 import { validateDob, parseDobToDate, formatDateToDob, formatDateToISO } from '../utils/dob-validation';
 import { useTranslation } from 'react-i18next';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
 
 // Only import DateTimePicker on native platforms
 let DateTimePicker: any = null;
@@ -210,9 +211,7 @@ const MandatoryDetailsScreen = () => {
           ]}
         >
           <View style={styles.headerContent}>
-            <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-              <MaterialIcons name="arrow-back-ios-new" size={24} color={themeColors.text} />
-            </TouchableOpacity>
+            <IconButton icon="arrow-back-ios-new" onPress={handleBack} iconColor={themeColors.text} />
             <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('onboarding.step', { current: 2, total: 5 })}</Text>
             <View style={styles.spacer} />
           </View>
@@ -336,13 +335,13 @@ const MandatoryDetailsScreen = () => {
                 {dobHasError ? (
                   <MaterialIcons name="error" size={24} color={Colors.error} style={styles.inputIconRight} />
                 ) : (
-                  <TouchableOpacity
-                    style={styles.inputIconRight}
+                  <IconButton
+                    icon="calendar-today"
                     onPress={openDatePicker}
-                    hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
-                  >
-                    <MaterialIcons name="calendar-today" size={24} color="#94a3b8" />
-                  </TouchableOpacity>
+                    iconColor="#94a3b8"
+                    size="sm"
+                    style={styles.inputIconRight}
+                  />
                 )}
 
                 {/* Hidden native date input for web */}
@@ -388,17 +387,11 @@ const MandatoryDetailsScreen = () => {
                     ]}
                   >
                     <View style={styles.modalHeader}>
-                      <TouchableOpacity onPress={() => setShowDatePicker(false)}>
-                        <Text style={[styles.modalButton, { color: isDark ? '#94a3b8' : '#64748b' }]}>
-                          {t('common.cancel')}
-                        </Text>
-                      </TouchableOpacity>
+                      <Button title={t('common.cancel')} onPress={() => setShowDatePicker(false)} variant="ghost" size="sm" />
                       <Text style={[styles.modalTitle, { color: themeColors.text }]}>
                         {t('onboarding.dobLabel')}
                       </Text>
-                      <TouchableOpacity onPress={handlePickerDone}>
-                        <Text style={[styles.modalButton, { color: Colors.primary }]}>{t('common.done')}</Text>
-                      </TouchableOpacity>
+                      <Button title={t('common.done')} onPress={handlePickerDone} variant="ghost" size="sm" />
                     </View>
                     <DateTimePicker
                       value={pickerDate}
@@ -462,20 +455,16 @@ const MandatoryDetailsScreen = () => {
             },
           ]}
         >
-          <TouchableOpacity
-            style={[styles.continueButton, loading && { opacity: 0.6 }]}
+          <Button
+            title={t('common.continue')}
             onPress={handleContinue}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color={Colors.dark.background} />
-            ) : (
-              <>
-                <Text style={styles.continueButtonText}>{t('common.continue')}</Text>
-                <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
-              </>
-            )}
-          </TouchableOpacity>
+            variant="primary"
+            size="lg"
+            fullWidth
+            loading={loading}
+            icon="arrow-forward"
+            iconPosition="right"
+          />
         </View>
 
         {/* Verification Badge (Visual Element) */}
@@ -642,26 +631,6 @@ const styles = StyleSheet.create({
     padding: 24,
     borderTopWidth: 1,
     zIndex: 10,
-  },
-  continueButton: {
-    width: '100%',
-    height: 64,
-    backgroundColor: Colors.primary,
-    borderRadius: 9999,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  continueButtonText: {
-    color: Colors.dark.background,
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   verificationBadge: {
     position: 'absolute',

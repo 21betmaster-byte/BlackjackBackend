@@ -40,6 +40,9 @@ function RootNavigator() {
         <Stack.Screen name="custom-app-loader" options={{ headerShown: false }} />
         <Stack.Screen name="blackjack-game" options={{ headerShown: false }} />
         <Stack.Screen name="how-to-play" options={{ headerShown: false }} />
+        <Stack.Screen name="training-analytics" options={{ headerShown: false }} />
+        <Stack.Screen name="strategy-reference" options={{ headerShown: false }} />
+        <Stack.Screen name="stats-dashboard" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

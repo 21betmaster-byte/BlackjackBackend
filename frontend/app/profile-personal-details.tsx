@@ -5,7 +5,6 @@ import {
   View,
   Text,
   TextInput,
-  TouchableOpacity,
   ScrollView,
   Platform,
   ActivityIndicator,
@@ -21,6 +20,9 @@ import { useToast } from '../contexts/ToastContext';
 import CountryPicker from '../components/ui/CountryPicker';
 import { useTranslation } from 'react-i18next';
 import BottomNav from '../components/ui/BottomNav';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+import SegmentedControl from '../components/ui/SegmentedControl';
 
 type TabType = 'identity' | 'security';
 
@@ -180,16 +182,10 @@ const ProfilePersonalDetailsScreen = () => {
       <View style={[styles.container, { backgroundColor: darkTheme ? themeColors.background : '#f6f8f8' }]}>
         {/* Header */}
         <View style={[styles.header, { backgroundColor: darkTheme ? 'rgba(16, 34, 32, 0.8)' : 'rgba(246, 248, 248, 0.8)', borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
-          <TouchableOpacity style={styles.headerButton} onPress={handleBack}>
-            <MaterialIcons name="arrow-back-ios-new" size={24} color={Colors.primary} />
-          </TouchableOpacity>
+          <IconButton icon="arrow-back-ios-new" onPress={handleBack} iconColor={Colors.primary} />
           <Text style={[styles.headerTitle, { color: themeColors.text }]}>{t('profile.accountSettings')}</Text>
           {activeTab === 'identity' ? (
-            <TouchableOpacity onPress={handleSaveProfile} disabled={!isDirty || saving}>
-              <Text style={[styles.headerSaveButton, { color: isDirty ? Colors.primary : '#94a3b8' }]}>
-                {saving ? t('common.saving') : t('common.save')}
-              </Text>
-            </TouchableOpacity>
+            <Button title={saving ? t('common.saving') : t('common.save')} onPress={handleSaveProfile} variant="ghost" size="sm" disabled={!isDirty || saving} />
           ) : (
             <View style={{ width: 50 }} />
           )}
@@ -197,22 +193,15 @@ const ProfilePersonalDetailsScreen = () => {
 
         {/* Tab Bar */}
         <View style={[styles.tabBar, { borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'identity' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('identity')}
-          >
-            <Text style={[styles.tabButtonText, { color: activeTab === 'identity' ? Colors.dark.background : (darkTheme ? '#94a3b8' : '#64748b') }]}>
-              {t('profile.identity')}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.tabButton, activeTab === 'security' && styles.tabButtonActive]}
-            onPress={() => setActiveTab('security')}
-          >
-            <Text style={[styles.tabButtonText, { color: activeTab === 'security' ? Colors.dark.background : (darkTheme ? '#94a3b8' : '#64748b') }]}>
-              {t('profile.security')}
-            </Text>
-          </TouchableOpacity>
+          <SegmentedControl
+            options={[
+              { value: 'identity', label: t('profile.identity') },
+              { value: 'security', label: t('profile.security') },
+            ]}
+            selectedValue={activeTab}
+            onSelect={(val) => setActiveTab(val as TabType)}
+            style={{ flex: 1 }}
+          />
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollViewContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -270,9 +259,7 @@ const ProfilePersonalDetailsScreen = () => {
                         placeholder={t('profile.enterCurrentPassword')}
                         placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                       />
-                      <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-                        <MaterialIcons name={showCurrentPassword ? 'visibility' : 'visibility-off'} size={20} color="#94a3b8" />
-                      </TouchableOpacity>
+                      <IconButton icon={showCurrentPassword ? 'visibility' : 'visibility-off'} onPress={() => setShowCurrentPassword(!showCurrentPassword)} iconColor="#94a3b8" size="sm" />
                     </View>
                   </View>
                 )}
@@ -287,9 +274,7 @@ const ProfilePersonalDetailsScreen = () => {
                       placeholder={t('profile.enterNewPassword')}
                       placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                     />
-                    <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-                      <MaterialIcons name={showNewPassword ? 'visibility' : 'visibility-off'} size={20} color="#94a3b8" />
-                    </TouchableOpacity>
+                    <IconButton icon={showNewPassword ? 'visibility' : 'visibility-off'} onPress={() => setShowNewPassword(!showNewPassword)} iconColor="#94a3b8" size="sm" />
                   </View>
                   {newPassword.length > 0 && (
                     <Text style={[styles.strengthText, { color: strength.color }]}>
@@ -308,9 +293,7 @@ const ProfilePersonalDetailsScreen = () => {
                       placeholder={t('profile.reenterNewPassword')}
                       placeholderTextColor={darkTheme ? '#a1a1aa' : '#6b7280'}
                     />
-                    <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                      <MaterialIcons name={showConfirmPassword ? 'visibility' : 'visibility-off'} size={20} color="#94a3b8" />
-                    </TouchableOpacity>
+                    <IconButton icon={showConfirmPassword ? 'visibility' : 'visibility-off'} onPress={() => setShowConfirmPassword(!showConfirmPassword)} iconColor="#94a3b8" size="sm" />
                   </View>
                   {confirmPassword.length > 0 && confirmPassword !== newPassword && (
                     <Text style={[styles.strengthText, { color: Colors.error }]}>{t('profile.passwordsMismatch')}</Text>
@@ -318,19 +301,15 @@ const ProfilePersonalDetailsScreen = () => {
                 </View>
               </FormSection>
 
-              <TouchableOpacity
-                style={[styles.changePasswordButton, (changingPassword || !newPassword || !confirmPassword) && { opacity: 0.5 }]}
+              <Button
+                title={isGoogleOnly ? t('profile.setPassword') : t('profile.changePassword')}
                 onPress={handleChangePassword}
-                disabled={changingPassword || !newPassword || !confirmPassword}
-              >
-                {changingPassword ? (
-                  <ActivityIndicator color={Colors.dark.background} />
-                ) : (
-                  <Text style={styles.changePasswordButtonText}>
-                    {isGoogleOnly ? t('profile.setPassword') : t('profile.changePassword')}
-                  </Text>
-                )}
-              </TouchableOpacity>
+                variant="primary"
+                size="lg"
+                fullWidth
+                loading={changingPassword}
+                disabled={!newPassword || !confirmPassword}
+              />
 
               {isGoogleOnly && (
                 <View style={[styles.infoBox, { backgroundColor: darkTheme ? 'rgba(17, 212, 196, 0.1)' : 'rgba(17, 212, 196, 0.05)', borderColor: darkTheme ? themeColors.border : '#e2e8f0' }]}>
@@ -406,8 +385,6 @@ const styles = StyleSheet.create({
   formFieldRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   formFieldValue: { backgroundColor: 'transparent', borderWidth: 0, padding: 0, fontSize: 16, fontWeight: '600', flex: 1 },
   strengthText: { fontSize: 12, fontWeight: '500', marginTop: 4 },
-  changePasswordButton: { height: 52, borderRadius: 9999, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center' },
-  changePasswordButtonText: { color: Colors.dark.background, fontSize: 16, fontWeight: 'bold' },
   infoBox: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 16, borderRadius: 12, borderWidth: 1 },
   infoText: { fontSize: 13, flex: 1, lineHeight: 18 },
 });

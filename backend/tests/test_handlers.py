@@ -165,22 +165,9 @@ def test_save_stats_success(dynamodb_tables, mock_context):
     }
     login_response = auth_handlers.login(login_event, mock_context)
     user_token = json.loads(login_response["body"])["access_token"]
-    
-    # Decode token to get user ID for authorizer context simulation
-    # Using auth_handlers.ALGORITHM because ALGORITHM is imported into auth_handlers from utils/auth
-    decoded_token = jwt.decode(user_token, os.environ["SECRET_KEY"], algorithms=[auth_handlers.ALGORITHM])
-    user_id_from_token = decoded_token["sub"]
 
     event = {
-        "requestContext": {
-            "authorizer": {
-                "jwt": {
-                    "claims": {
-                        "sub": user_id_from_token # Simulate user ID from authorizer
-                    }
-                }
-            }
-        },
+        "headers": {"Authorization": f"Bearer {user_token}"},
         "body": json.dumps({"result": "win", "mistakes": 1})
     }
     response = stats_handlers.save(event, mock_context)
@@ -189,9 +176,9 @@ def test_save_stats_success(dynamodb_tables, mock_context):
     assert body["status"] == "saved"
 
     # Verify item in DynamoDB
+    decoded_token = jwt.decode(user_token, os.environ["SECRET_KEY"], algorithms=[auth_handlers.ALGORITHM])
+    user_id_from_token = decoded_token["sub"]
     table = boto3.resource("dynamodb").Table("TestStatsTable")
-    # DynamoDB doesn't have a simple get_item by HASH and RANGE without exact range key
-    # We'll do a query, but a full scan for test might be simpler for single item
     query_response = table.query(
         KeyConditionExpression=boto3.dynamodb.conditions.Key('userId').eq(user_id_from_token)
     )
@@ -201,10 +188,10 @@ def test_save_stats_success(dynamodb_tables, mock_context):
     assert items[0]["mistakes"] == 1
     assert "timestamp" in items[0]
 
-def test_save_stats_unauthorized_no_authorizer_context(dynamodb_tables, mock_context):
+def test_save_stats_unauthorized_no_auth_header(dynamodb_tables, mock_context):
     event = {
+        "headers": {},
         "body": json.dumps({"result": "loss", "mistakes": 0})
-        # Missing requestContext.authorizer.jwt.claims
     }
     response = stats_handlers.save(event, mock_context)
     assert response["statusCode"] == 401
@@ -218,21 +205,10 @@ def test_save_stats_invalid_body(dynamodb_tables, mock_context):
     auth_handlers.signup({"body": json.dumps({"email": user_email, "password": user_password})}, mock_context)
     login_response = auth_handlers.login({"body": json.dumps({"email": user_email, "password": user_password})}, mock_context)
     user_token = json.loads(login_response["body"])["access_token"]
-    # Using auth_handlers.ALGORITHM because ALGORITHM is imported into auth_handlers from utils/auth
-    decoded_token = jwt.decode(user_token, os.environ["SECRET_KEY"], algorithms=[auth_handlers.ALGORITHM])
-    user_id_from_token = decoded_token["sub"]
 
     event = {
-        "requestContext": {
-            "authorizer": {
-                "jwt": {
-                    "claims": {
-                        "sub": user_id_from_token
-                    }
-                }
-            }
-        },
-        "body": json.dumps({"result": "invalid", "mistakes": "not_an_int"}) # Invalid data
+        "headers": {"Authorization": f"Bearer {user_token}"},
+        "body": json.dumps({"result": "invalid", "mistakes": "not_an_int"})
     }
     response = stats_handlers.save(event, mock_context)
     assert response["statusCode"] == 400

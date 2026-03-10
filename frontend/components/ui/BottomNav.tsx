@@ -14,8 +14,8 @@ interface BottomNavProps {
 
 const NAV_ITEMS: { key: ActiveTab; icon: keyof typeof MaterialIcons.glyphMap; labelKey: string; route: string }[] = [
   { key: 'home', icon: 'home', labelKey: 'nav.home', route: '/home-dashboard' },
-  { key: 'stats', icon: 'leaderboard', labelKey: 'nav.stats', route: '' },
-  { key: 'strategy', icon: 'auto-stories', labelKey: 'nav.strategy', route: '' },
+  { key: 'stats', icon: 'leaderboard', labelKey: 'nav.stats', route: '/stats-dashboard' },
+  { key: 'strategy', icon: 'auto-stories', labelKey: 'nav.strategy', route: '/strategy-reference' },
   { key: 'profile', icon: 'person', labelKey: 'nav.profile', route: '/profile-settings-invite' },
 ];
 
@@ -81,6 +81,7 @@ export default function BottomNav({ activeTab }: BottomNavProps) {
           styles.centerButton,
           { backgroundColor: Colors.primary, borderColor: themeBg, borderWidth: 4 },
         ]}
+        onPress={() => router.push('/blackjack-game' as any)}
       >
         <MaterialIcons name="casino" size={32} color={Colors.dark.background} />
       </TouchableOpacity>

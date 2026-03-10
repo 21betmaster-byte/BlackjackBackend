@@ -4,7 +4,6 @@ import {
   SafeAreaView,
   View,
   Text,
-  TouchableOpacity,
   ScrollView,
   Platform,
   Switch,
@@ -19,6 +18,10 @@ import { useTranslation } from 'react-i18next';
 import { SUPPORTED_LANGUAGES } from '../i18n';
 import { useLanguage } from '../contexts/LanguageContext';
 import AppModal from '../components/ui/AppModal';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
+import SegmentedControl from '../components/ui/SegmentedControl';
+import ListOption from '../components/ui/ListOption';
 
 const LanguageThemeSetupScreen = () => {
   const colorScheme = useColorScheme();
@@ -47,9 +50,7 @@ const LanguageThemeSetupScreen = () => {
       <View style={[styles.container, { backgroundColor: themeColors.background }]}>
         {/* Top App Bar */}
         <View style={styles.topAppBar}>
-          <TouchableOpacity style={styles.backButton} onPress={handleBack}>
-            <MaterialIcons name="arrow-back-ios-new" size={24} color={themeColors.text} />
-          </TouchableOpacity>
+          <IconButton icon="arrow-back-ios-new" onPress={handleBack} iconColor={themeColors.text} size="lg" />
           <Text style={[styles.appBarTitle, { color: themeColors.text }]}>{config.appName}</Text>
         </View>
 
@@ -78,21 +79,16 @@ const LanguageThemeSetupScreen = () => {
                 <MaterialIcons name="language" size={20} color={Colors.primary} />
                 <Text style={[styles.inputLabel, { color: themeColors.text }]}>{t('setup.preferredLanguage')}</Text>
               </View>
-              <TouchableOpacity
-                style={[
-                  styles.selectInput,
-                  {
-                    backgroundColor: colorScheme === 'dark' ? '#1e293b' : 'white',
-                    shadowColor: colorScheme === 'dark' ? 'transparent' : 'rgba(0,0,0,0.05)',
-                  },
-                ]}
+              <Button
+                title={SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel ?? 'English'}
                 onPress={() => setLanguagePickerVisible(true)}
-              >
-                <Text style={[styles.selectText, { color: themeColors.text }]}>
-                  {SUPPORTED_LANGUAGES.find(l => l.code === language)?.nativeLabel ?? 'English'}
-                </Text>
-                <MaterialIcons name="expand-more" size={24} color={'#94a3b8'} />
-              </TouchableOpacity>
+                variant="outline"
+                size="lg"
+                fullWidth
+                icon="expand-more"
+                iconPosition="right"
+                style={[styles.selectInput, { backgroundColor: colorScheme === 'dark' ? '#1e293b' : 'white' }]}
+              />
               <Text style={[styles.hintText, { color: colorScheme === 'dark' ? '#94a3b8' : '#64748b' }]}>
                 {t('setup.languageHint')}
               </Text>
@@ -104,62 +100,14 @@ const LanguageThemeSetupScreen = () => {
                 <MaterialIcons name="contrast" size={20} color={Colors.primary} />
                 <Text style={[styles.inputLabel, { color: themeColors.text }]}>{t('setup.appTheme')}</Text>
               </View>
-              <View
-                style={[
-                  styles.segmentedControlContainer,
-                  {
-                    backgroundColor: colorScheme === 'dark' ? '#1e293b' : 'white',
-                    shadowColor: colorScheme === 'dark' ? 'transparent' : 'rgba(0,0,0,0.05)',
-                  },
+              <SegmentedControl
+                options={[
+                  { value: 'light', label: t('setup.light'), icon: 'light-mode' },
+                  { value: 'dark', label: t('setup.dark'), icon: 'dark-mode' },
                 ]}
-              >
-                <TouchableOpacity
-                  style={[
-                    styles.segmentedControlButton,
-                    selectedTheme === 'light' && styles.segmentedControlButtonActive,
-                    selectedTheme === 'light' && { backgroundColor: Colors.primary },
-                  ]}
-                  onPress={() => setSelectedTheme('light')}
-                >
-                  <MaterialIcons
-                    name="light_mode"
-                    size={20}
-                    color={selectedTheme === 'light' ? 'white' : (colorScheme === 'dark' ? '#a1a1aa' : '#475569')}
-                  />
-                  <Text
-                    style={[
-                      styles.segmentedControlText,
-                      selectedTheme === 'light' && { color: 'white', fontWeight: 'bold' },
-                      selectedTheme !== 'light' && { color: colorScheme === 'dark' ? '#a1a1aa' : '#475569' },
-                    ]}
-                  >
-                    {t('setup.light')}
-                  </Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[
-                    styles.segmentedControlButton,
-                    selectedTheme === 'dark' && styles.segmentedControlButtonActive,
-                    selectedTheme === 'dark' && { backgroundColor: Colors.primary },
-                  ]}
-                  onPress={() => setSelectedTheme('dark')}
-                >
-                  <MaterialIcons
-                    name="dark_mode"
-                    size={20}
-                    color={selectedTheme === 'dark' ? 'white' : (colorScheme === 'dark' ? '#a1a1aa' : '#475569')}
-                  />
-                  <Text
-                    style={[
-                      styles.segmentedControlText,
-                      selectedTheme === 'dark' && { color: 'white', fontWeight: 'bold' },
-                      selectedTheme !== 'dark' && { color: colorScheme === 'dark' ? '#a1a1aa' : '#475569' },
-                    ]}
-                  >
-                    {t('setup.dark')}
-                  </Text>
-                </TouchableOpacity>
-              </View>
+                selectedValue={selectedTheme}
+                onSelect={(val) => setSelectedTheme(val as 'light' | 'dark')}
+              />
             </View>
 
             {/* Accessibility Quick Toggle */}
@@ -207,20 +155,16 @@ const LanguageThemeSetupScreen = () => {
           title={t('setup.preferredLanguage')}
         >
           {SUPPORTED_LANGUAGES.map((lang) => (
-            <TouchableOpacity
+            <ListOption
               key={lang.code}
-              style={[styles.languageOption, language === lang.code && styles.languageOptionActive]}
+              leadingText={lang.flag}
+              label={lang.nativeLabel}
+              selected={language === lang.code}
               onPress={() => {
                 setLanguage(lang.code);
                 setLanguagePickerVisible(false);
               }}
-            >
-              <Text style={styles.languageFlag}>{lang.flag}</Text>
-              <Text style={[styles.languageLabel, { color: themeColors.text }]}>{lang.nativeLabel}</Text>
-              {language === lang.code && (
-                <MaterialIcons name="check" size={20} color={Colors.primary} />
-              )}
-            </TouchableOpacity>
+            />
           ))}
         </AppModal>
 
@@ -234,10 +178,15 @@ const LanguageThemeSetupScreen = () => {
             },
           ]}
         >
-          <TouchableOpacity style={styles.continueButton} onPress={handleContinue}>
-            <Text style={styles.continueButtonText}>{t('setup.continueToTraining')}</Text>
-            <MaterialIcons name="arrow-forward" size={24} color={Colors.dark.background} />
-          </TouchableOpacity>
+          <Button
+            title={t('setup.continueToTraining')}
+            onPress={handleContinue}
+            variant="primary"
+            size="lg"
+            fullWidth
+            icon="arrow-forward"
+            iconPosition="right"
+          />
         </View>
       </View>
     </SafeAreaView>
@@ -411,26 +360,6 @@ const styles = StyleSheet.create({
   footerAction: {
     padding: 24,
     borderTopWidth: 1,
-  },
-  continueButton: {
-    width: '100%',
-    height: 56,
-    backgroundColor: Colors.primary,
-    borderRadius: 9999,
-    shadowColor: Colors.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 10,
-    elevation: 5,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  continueButtonText: {
-    color: Colors.dark.background,
-    fontSize: 18,
-    fontWeight: 'bold',
   },
   languageOption: {
     flexDirection: 'row',

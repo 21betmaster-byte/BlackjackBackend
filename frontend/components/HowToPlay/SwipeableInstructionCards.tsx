@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Dimensions,
-  TouchableOpacity,
   ScrollView,
   NativeSyntheticEvent,
   NativeScrollEvent,

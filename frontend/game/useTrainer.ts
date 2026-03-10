@@ -1,6 +1,12 @@
-import { useState, useEffect } from 'react';
-import { GameState, canSplit, canDouble } from './engine';
-import { getBestPlay, BestPlay } from './strategy';
+// useTrainer — Backward-compatible hook that delegates to the training framework.
+// Maintains the same external API so blackjack-game.tsx changes are minimal.
+
+import { useState, useEffect, useMemo } from 'react';
+import { GameState, canSplit, canDouble, canSurrender } from './engine';
+import { getBestPlay, BestPlay, getDetailedPlay } from './strategy';
+import { useTrainingSession, UseTrainingSessionReturn } from '../training/useTrainingSession';
+import { blackjackAdapter, BlackjackAction } from '../training/adapters/BlackjackAdapter';
+import { TrainingDecision } from '../training/types';
 
 export type TrainerState = {
   bestPlay: BestPlay | null;
@@ -8,14 +14,16 @@ export type TrainerState = {
   lastAction: string | null;
   checkAction: (action: string) => void;
   resetRound: () => void;
+  /** NEW: Access the full training session for enhanced UI */
+  training: UseTrainingSessionReturn<GameState, BlackjackAction>;
 };
 
 export function useTrainer(gameState: GameState, enabled: boolean = true): TrainerState {
+  const training = useTrainingSession(blackjackAdapter, enabled);
   const [bestPlay, setBestPlay] = useState<BestPlay | null>(null);
-  const [mistakes, setMistakes] = useState(0);
   const [lastAction, setLastAction] = useState<string | null>(null);
 
-  // Compute best play when it's player's turn
+  // Compute best play when it's player's turn (same logic as before)
   useEffect(() => {
     if (!enabled) {
       setBestPlay(null);
@@ -30,7 +38,8 @@ export function useTrainer(gameState: GameState, enabled: boolean = true): Train
           hand.cards,
           dealerUpCard,
           canSplit(hand, gameState.playerHands, gameState.config),
-          canDouble(hand)
+          canDouble(hand),
+          canSurrender(hand),
         );
         setBestPlay(play);
       } else {
@@ -43,19 +52,30 @@ export function useTrainer(gameState: GameState, enabled: boolean = true): Train
 
   const checkAction = (action: string) => {
     if (!enabled) return;
-    if (bestPlay && action !== bestPlay.action) {
-      setMistakes(m => m + 1);
-      setLastAction(bestPlay.action);
+
+    // Record the decision through the training framework
+    const decision = training.evaluate(gameState, action as BlackjackAction);
+
+    // Update lastAction for the mistake flash UI
+    if (decision && !decision.isCorrect) {
+      setLastAction(decision.optimalAction);
     } else {
       setLastAction(null);
     }
   };
 
   const resetRound = () => {
-    setMistakes(0);
     setLastAction(null);
     setBestPlay(null);
+    training.resetRound();
   };
 
-  return { bestPlay, mistakes, lastAction, checkAction, resetRound };
+  return {
+    bestPlay,
+    mistakes: training.totalMistakes,
+    lastAction,
+    checkAction,
+    resetRound,
+    training,
+  };
 }

@@ -3,7 +3,7 @@
 export type Suit = 'hearts' | 'diamonds' | 'clubs' | 'spades';
 export type Rank = '2' | '3' | '4' | '5' | '6' | '7' | '8' | '9' | '10' | 'J' | 'Q' | 'K' | 'A';
 export type Card = { suit: Suit; rank: Rank; faceUp: boolean };
-export type HandStatus = 'active' | 'stood' | 'busted' | 'blackjack' | 'doubled';
+export type HandStatus = 'active' | 'stood' | 'busted' | 'blackjack' | 'doubled' | 'surrendered';
 export type Hand = {
   cards: Card[];
   bet: number;
@@ -12,7 +12,7 @@ export type Hand = {
   splitFrom?: number;
 };
 export type GamePhase = 'betting' | 'dealing' | 'insurance' | 'player_turn' | 'dealer_turn' | 'settlement' | 'shuffling';
-export type HandResult = 'win' | 'loss' | 'push' | 'blackjack' | 'busted';
+export type HandResult = 'win' | 'loss' | 'push' | 'blackjack' | 'busted' | 'surrendered';
 export type RoundResult = {
   handResults: { handIndex: number; result: HandResult; payout: number }[];
   totalPayout: number;
@@ -33,7 +33,7 @@ export type GameConfig = {
 export const DEFAULT_CONFIG: GameConfig = {
   deckCount: 8,
   startingBalance: 1000,
-  maxBet: 100,
+  maxBet: 500,
   minBet: 5,
   maxHands: 3,
   blackjackPayout: 1.5,
@@ -223,21 +223,7 @@ export function dealInitialCards(state: GameState): GameState {
     }
   }
 
-  let phase: GamePhase = 'player_turn';
-  let activeHandIndex = 0;
-
-  // Skip hands that have blackjack
-  while (activeHandIndex < hands.length && hands[activeHandIndex].status !== 'active') {
-    activeHandIndex++;
-  }
-
-  // If all hands are blackjack, go to dealer turn
-  if (activeHandIndex >= hands.length) {
-    phase = 'dealer_turn';
-    activeHandIndex = 0;
-  }
-
-  return { ...state, shoe, dealerHand, playerHands: hands, phase, activeHandIndex, previousBets };
+  return { ...state, shoe, dealerHand, playerHands: hands, phase: 'dealing', activeHandIndex: 0, previousBets };
 }
 
 export function checkDealerPeek(state: GameState): { hasBlackjack: boolean; offerInsurance: boolean } {
@@ -399,6 +385,25 @@ export function playerSplit(state: GameState): GameState {
   return newState;
 }
 
+export function canSurrender(hand: Hand): boolean {
+  return hand.cards.length === 2 && hand.status === 'active' && !hand.splitFrom;
+}
+
+export function playerSurrender(state: GameState): GameState {
+  if (state.phase !== 'player_turn') return state;
+  const hand = state.playerHands[state.activeHandIndex];
+  if (!canSurrender(hand)) return state;
+
+  const newHands = [...state.playerHands];
+  newHands[state.activeHandIndex] = { ...hand, status: 'surrendered' };
+
+  // Return half the bet immediately
+  const halfBet = Math.floor(hand.bet / 2);
+
+  let newState = { ...state, playerHands: newHands, balance: state.balance + halfBet };
+  return advanceToNextHand(newState);
+}
+
 export function playDealer(state: GameState): GameState {
   if (state.phase !== 'dealer_turn') return state;
 
@@ -441,7 +446,10 @@ export function settleRound(state: GameState, mistakes: number = 0): GameState {
     let result: HandResult;
     let payout = 0;
 
-    if (hand.status === 'busted') {
+    if (hand.status === 'surrendered') {
+      result = 'surrendered';
+      payout = 0; // Half already returned in playerSurrender
+    } else if (hand.status === 'busted') {
       result = 'busted';
       payout = 0; // Bet already lost
     } else if (hand.status === 'blackjack') {
@@ -545,6 +553,46 @@ export function rebetAndDeal(state: GameState): GameState {
 
   const stateWithBets = { ...state, playerHands: newHands, balance };
   return dealInitialCards(stateWithBets);
+}
+
+export function completeDeal(state: GameState): GameState {
+  if (state.phase !== 'dealing') return state;
+
+  const hands = state.playerHands;
+  let activeHandIndex = 0;
+
+  // Skip hands that have blackjack
+  while (activeHandIndex < hands.length && hands[activeHandIndex].status !== 'active') {
+    activeHandIndex++;
+  }
+
+  // If all hands are blackjack, go to dealer turn
+  if (activeHandIndex >= hands.length) {
+    return { ...state, phase: 'dealer_turn', activeHandIndex: 0 };
+  }
+
+  // Check for dealer peek
+  const peek = checkDealerPeek(state);
+  if (peek.offerInsurance) {
+    return { ...state, phase: 'insurance', activeHandIndex };
+  }
+  if (peek.hasBlackjack) {
+    const dealerState = { ...state, phase: 'dealer_turn' as GamePhase, activeHandIndex };
+    return playDealer(dealerState);
+  }
+
+  return { ...state, phase: 'player_turn', activeHandIndex };
+}
+
+export function clearBets(state: GameState): GameState {
+  if (state.phase !== 'betting') return state;
+  const totalReturned = state.playerHands.reduce((sum, h) => sum + h.bet, 0);
+  if (totalReturned === 0) return state;
+  return {
+    ...state,
+    playerHands: state.playerHands.map(h => ({ ...h, bet: 0 })),
+    balance: state.balance + totalReturned,
+  };
 }
 
 export function resetMoney(state: GameState): GameState {

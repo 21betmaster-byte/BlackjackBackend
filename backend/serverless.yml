@@ -129,6 +129,18 @@ functions:
           #   issuerUrl: "https://your-issuer-url/.well-known/jwks.json" # This needs to be configured properly
           #   audience:
           #     - "your-audience"
+  getTrainingSummary:
+    handler: handlers/training.get_summary
+    events:
+      - httpApi:
+          path: /training/summary
+          method: get
+  getTrainingProgress:
+    handler: handlers/training.get_progress
+    events:
+      - httpApi:
+          path: /training/progress
+          method: get
 
 resources:
   Resources:

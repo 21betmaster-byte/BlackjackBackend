@@ -4,9 +4,10 @@ import {
   SafeAreaView,
   View,
   Text,
-  TouchableOpacity,
   Platform,
   Dimensions,
+  ScrollView,
+  TouchableOpacity,
 } from 'react-native';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { MaterialIcons } from '@expo/vector-icons';
@@ -20,10 +21,13 @@ import axios from 'axios';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
+import { useHaptics } from '../hooks/useHaptics';
 import { API_URL } from '../config';
 import { useTranslation } from 'react-i18next';
 import PlayingCard from '../components/PlayingCard';
 import BettingCircle from '../components/BettingCircle';
+import Button from '../components/ui/Button';
+import IconButton from '../components/ui/IconButton';
 import {
   GameState,
   GamePhase,
@@ -33,7 +37,8 @@ import {
   placeBet,
   removeBet,
   dealInitialCards,
-  checkDealerPeek,
+  completeDeal,
+  clearBets,
   resolveInsurance,
   playerHit,
   playerStand,
@@ -47,11 +52,17 @@ import {
   scoreHand,
   canSplit,
   canDouble,
+  canSurrender,
+  playerSurrender,
   shouldReshuffle,
   formatCardShort,
 } from '../game/engine';
 import { useTrainer } from '../game/useTrainer';
 import { DEFAULT_CHIPS, ChipConfig } from '../game/types';
+import {
+  incrementRoundCounter,
+  resetRoundCounter,
+} from '../training/adapters/BlackjackAdapter';
 
 // Reducer
 type GameAction =
@@ -62,11 +73,14 @@ type GameAction =
   | { type: 'STAND' }
   | { type: 'DOUBLE' }
   | { type: 'SPLIT' }
+  | { type: 'SURRENDER' }
   | { type: 'INSURANCE'; accepted: boolean }
   | { type: 'PLAY_DEALER' }
   | { type: 'SETTLE'; mistakes: number }
   | { type: 'NEW_ROUND' }
   | { type: 'REBET_AND_DEAL' }
+  | { type: 'DEALING_COMPLETE' }
+  | { type: 'CLEAR_BETS' }
   | { type: 'RESET_MONEY' }
   | { type: 'RESET'; config?: GameConfig };
 
@@ -76,19 +90,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return placeBet(state, action.handIndex, action.amount);
     case 'REMOVE_BET':
       return removeBet(state, action.handIndex);
-    case 'DEAL': {
-      let newState = dealInitialCards(state);
-      // Check for dealer peek
-      const peek = checkDealerPeek(newState);
-      if (peek.offerInsurance) {
-        newState = { ...newState, phase: 'insurance' };
-      } else if (peek.hasBlackjack) {
-        // Dealer has blackjack with 10 showing, go straight to settlement
-        newState = { ...newState, phase: 'dealer_turn' };
-        newState = playDealer(newState);
-      }
-      return newState;
-    }
+    case 'DEAL':
+      return dealInitialCards(state);
     case 'HIT':
       return playerHit(state);
     case 'STAND':
@@ -97,6 +100,8 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return playerDouble(state);
     case 'SPLIT':
       return playerSplit(state);
+    case 'SURRENDER':
+      return playerSurrender(state);
     case 'INSURANCE':
       return resolveInsurance(state, action.accepted);
     case 'PLAY_DEALER':
@@ -105,17 +110,12 @@ function gameReducer(state: GameState, action: GameAction): GameState {
       return settleRound(state, action.mistakes);
     case 'NEW_ROUND':
       return startNewRound(state);
-    case 'REBET_AND_DEAL': {
-      let newState = rebetAndDeal(state);
-      const peek = checkDealerPeek(newState);
-      if (peek.offerInsurance) {
-        newState = { ...newState, phase: 'insurance' };
-      } else if (peek.hasBlackjack) {
-        newState = { ...newState, phase: 'dealer_turn' };
-        newState = playDealer(newState);
-      }
-      return newState;
-    }
+    case 'REBET_AND_DEAL':
+      return rebetAndDeal(state);
+    case 'DEALING_COMPLETE':
+      return completeDeal(state);
+    case 'CLEAR_BETS':
+      return clearBets(state);
     case 'RESET_MONEY':
       return resetMoney(state);
     case 'RESET':
@@ -134,13 +134,14 @@ type BlackjackGameProps = {
 export default function BlackjackGameScreen({
   gameConfig,
   chips = DEFAULT_CHIPS,
-  trainerEnabled = true,
+  trainerEnabled: initialTrainerEnabled = true,
 }: BlackjackGameProps = {}) {
   const colorScheme = useColorScheme();
   const { token: authToken } = useAuth();
   const toast = useToast();
   const { t } = useTranslation();
 
+  const haptics = useHaptics();
   const config: GameConfig = { ...DEFAULT_CONFIG, ...gameConfig };
 
   const [gameState, dispatch] = useReducer(
@@ -150,8 +151,39 @@ export default function BlackjackGameScreen({
   );
   const [selectedChip, setSelectedChip] = useState<number>(chips[2]?.value ?? 25);
   const [showResult, setShowResult] = useState(false);
+  const [visibleCardCount, setVisibleCardCount] = useState(0);
+  const [trainingEnabled, setTrainingEnabled] = useState(initialTrainerEnabled);
 
-  const trainer = useTrainer(gameState, trainerEnabled);
+  const trainer = useTrainer(gameState, trainingEnabled);
+
+  // End training session and reset round counter on unmount
+  useEffect(() => {
+    resetRoundCounter();
+    return () => {
+      trainer.training.end(authToken ?? undefined).catch(() => {});
+    };
+  }, []);
+
+  // Dealing animation: reveal cards one at a time
+  useEffect(() => {
+    if (gameState.phase !== 'dealing') {
+      setVisibleCardCount(0);
+      return;
+    }
+    const activeHands = gameState.playerHands;
+    const totalCards = (activeHands.length * 2) + 2; // 2 per player hand + 2 dealer
+    setVisibleCardCount(0);
+    let count = 0;
+    const interval = setInterval(() => {
+      count++;
+      setVisibleCardCount(count);
+      if (count >= totalCards) {
+        clearInterval(interval);
+        setTimeout(() => dispatch({ type: 'DEALING_COMPLETE' }), 200);
+      }
+    }, 300);
+    return () => clearInterval(interval);
+  }, [gameState.phase]);
 
   // Auto-play dealer when entering dealer_turn
   useEffect(() => {
@@ -169,6 +201,7 @@ export default function BlackjackGameScreen({
       const timer = setTimeout(() => {
         dispatch({ type: 'SETTLE', mistakes: trainer.mistakes });
         setShowResult(true);
+        haptics.medium();
       }, 400);
       return () => clearTimeout(timer);
     }
@@ -215,18 +248,25 @@ export default function BlackjackGameScreen({
   const totalBets = () => gameState.playerHands.reduce((sum, h) => sum + h.bet, 0);
 
   const handleAction = (action: string, dispatchAction: GameAction) => {
+    haptics.light();
     trainer.checkAction(action);
     dispatch(dispatchAction);
   };
 
   const handleNewRound = () => {
+    incrementRoundCounter();
     trainer.resetRound();
     setShowResult(false);
     dispatch({ type: 'NEW_ROUND' });
   };
 
+  const toggleTraining = () => {
+    setTrainingEnabled(prev => !prev);
+  };
+
   const handlePlaceBet = (handIndex: number) => {
     if (gameState.phase !== 'betting') return;
+    haptics.light();
     dispatch({ type: 'PLACE_BET', handIndex, amount: selectedChip });
   };
 
@@ -241,8 +281,41 @@ export default function BlackjackGameScreen({
   const canStand = activeHand?.status === 'active';
   const canDbl = activeHand ? canDouble(activeHand) && activeHand.bet <= gameState.balance : false;
   const canSpl = activeHand ? canSplit(activeHand, gameState.playerHands, gameState.config) && activeHand.bet <= gameState.balance : false;
+  const canSur = activeHand ? canSurrender(activeHand) : false;
   const dealerScore = gameState.dealerHand.length > 0 ? scoreHand(gameState.dealerHand) : null;
   const shoeCount = gameState.shoe.length;
+
+  // Build deal order for animation: round 1 (player hands then dealer), round 2 (player hands then dealer)
+  const dealOrder: { type: 'player' | 'dealer'; handIdx: number; cardIdx: number }[] = [];
+  if (gameState.phase === 'dealing') {
+    for (let round = 0; round < 2; round++) {
+      for (let h = 0; h < gameState.playerHands.length; h++) {
+        dealOrder.push({ type: 'player', handIdx: h, cardIdx: round });
+      }
+      dealOrder.push({ type: 'dealer', handIdx: 0, cardIdx: round });
+    }
+  }
+
+  // Determine visible cards for each area during dealing
+  const getVisibleDealerCards = () => {
+    if (gameState.phase !== 'dealing') return gameState.dealerHand.length;
+    let count = 0;
+    for (let i = 0; i < Math.min(visibleCardCount, dealOrder.length); i++) {
+      if (dealOrder[i].type === 'dealer') count++;
+    }
+    return count;
+  };
+
+  const getVisiblePlayerCards = (handIdx: number) => {
+    if (gameState.phase !== 'dealing') return gameState.playerHands[handIdx]?.cards.length ?? 0;
+    let count = 0;
+    for (let i = 0; i < Math.min(visibleCardCount, dealOrder.length); i++) {
+      if (dealOrder[i].type === 'player' && dealOrder[i].handIdx === handIdx) count++;
+    }
+    return count;
+  };
+
+  const isDealing = gameState.phase === 'dealing';
 
   const chipColors: Record<number, string> = {};
   for (const chip of chips) {
@@ -254,14 +327,27 @@ export default function BlackjackGameScreen({
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <MaterialIcons name="arrow-back" size={24} color="#fff" />
-          </TouchableOpacity>
+          <IconButton icon="arrow-back" onPress={() => router.back()} iconColor="#fff" style={styles.backButton} />
           <Text style={styles.balanceText}>${gameState.balance.toLocaleString()}</Text>
           <View style={styles.headerRight}>
-            <TouchableOpacity onPress={() => router.push('/how-to-play')} style={styles.helpButton}>
-              <MaterialIcons name="help-outline" size={20} color="rgba(255,255,255,0.7)" />
+            <IconButton
+              icon="bar-chart"
+              onPress={() => router.push('/training-analytics')}
+              iconColor="rgba(255,255,255,0.7)"
+              size="sm"
+              style={styles.helpButton}
+            />
+            <TouchableOpacity onPress={toggleTraining} style={styles.trainingToggle}>
+              <MaterialIcons
+                name={trainingEnabled ? 'school' : 'school'}
+                size={18}
+                color={trainingEnabled ? '#11d4c4' : 'rgba(255,255,255,0.4)'}
+              />
+              <Text style={[styles.trainingToggleText, trainingEnabled && styles.trainingToggleActive]}>
+                {trainingEnabled ? t('training.trainingOn') : t('training.trainingOff')}
+              </Text>
             </TouchableOpacity>
+            <IconButton icon="help-outline" onPress={() => router.push('/how-to-play')} iconColor="rgba(255,255,255,0.7)" size="sm" style={styles.helpButton} />
             <View style={styles.shoeIndicator}>
               <MaterialIcons name="style" size={16} color="rgba(255,255,255,0.6)" />
               <Text style={styles.shoeText}>{shoeCount}</Text>
@@ -285,13 +371,13 @@ export default function BlackjackGameScreen({
           <View style={styles.dealerArea}>
             <Text style={styles.dealerLabel}>{t('game.dealer')}</Text>
             <View style={styles.dealerCards}>
-              {gameState.dealerHand.map((card, i) => (
-                <Animated.View key={i} entering={FadeIn.delay(i * 150)} style={{ marginLeft: i > 0 ? -20 : 0, zIndex: i }}>
+              {gameState.dealerHand.slice(0, getVisibleDealerCards()).map((card, i) => (
+                <Animated.View key={i} entering={SlideInDown.duration(250).springify()} style={{ marginLeft: i > 0 ? -20 : 0, zIndex: i }}>
                   <PlayingCard card={card} size="md" />
                 </Animated.View>
               ))}
             </View>
-            {dealerScore && gameState.dealerHand.some(c => c.faceUp) && (
+            {dealerScore && !isDealing && gameState.dealerHand.some(c => c.faceUp) && (
               <View style={styles.dealerScoreBubble}>
                 <Text style={styles.dealerScoreText}>
                   {gameState.phase === 'settlement' || gameState.phase === 'dealer_turn'
@@ -323,22 +409,28 @@ export default function BlackjackGameScreen({
             ) : (
               // Active hands
               <View style={styles.bettingCircles}>
-                {gameState.playerHands.map((hand, i) => (
-                  <BettingCircle
-                    key={i}
-                    hand={hand}
-                    isActive={gameState.phase === 'player_turn' && i === gameState.activeHandIndex}
-                    onPress={() => {}}
-                    betAmount={hand.bet}
-                    handLabel={gameState.playerHands.length > 1 ? t('game.hand', { num: i + 1 }) : undefined}
-                  />
-                ))}
+                {gameState.playerHands.map((hand, i) => {
+                  const visCards = getVisiblePlayerCards(i);
+                  const visibleHand = isDealing
+                    ? { ...hand, cards: hand.cards.slice(0, visCards) }
+                    : hand;
+                  return (
+                    <BettingCircle
+                      key={i}
+                      hand={visibleHand}
+                      isActive={gameState.phase === 'player_turn' && i === gameState.activeHandIndex}
+                      onPress={() => {}}
+                      betAmount={hand.bet}
+                      handLabel={gameState.playerHands.length > 1 ? t('game.hand', { num: i + 1 }) : undefined}
+                    />
+                  );
+                })}
               </View>
             )}
           </View>
 
           {/* Best play hint (only when trainer is enabled) */}
-          {trainerEnabled && trainer.bestPlay && gameState.phase === 'player_turn' && (
+          {trainingEnabled && trainer.bestPlay && gameState.phase === 'player_turn' && (
             <Animated.View entering={FadeIn} style={styles.hintContainer}>
               <MaterialIcons name="lightbulb" size={14} color="#d69e2e" />
               <Text style={styles.hintText}>{t('game.bestPlay', { action: trainer.bestPlay.action.toUpperCase() })}</Text>
@@ -346,7 +438,7 @@ export default function BlackjackGameScreen({
           )}
 
           {/* Mistake flash (only when trainer is enabled) */}
-          {trainerEnabled && trainer.lastAction && (
+          {trainingEnabled && trainer.lastAction && (
             <Animated.View entering={FadeIn} exiting={FadeOut} style={styles.mistakeFlash}>
               <Text style={styles.mistakeText}>{t('game.optimalWas', { action: trainer.lastAction.toUpperCase() })}</Text>
             </Animated.View>
@@ -361,19 +453,34 @@ export default function BlackjackGameScreen({
               <Text style={styles.insuranceDesc}>
                 {t('game.insuranceDesc', { amount: Math.floor((gameState.playerHands[0]?.bet || 0) / 2) })}
               </Text>
+              {trainingEnabled && (
+                <View style={styles.insuranceHint}>
+                  <MaterialIcons name="lightbulb" size={14} color="#d69e2e" />
+                  <Text style={styles.insuranceHintText}>{t('training.insuranceDecline')}</Text>
+                </View>
+              )}
               <View style={styles.insuranceButtons}>
-                <TouchableOpacity
-                  style={[styles.insuranceBtn, styles.insuranceBtnNo]}
-                  onPress={() => dispatch({ type: 'INSURANCE', accepted: false })}
-                >
-                  <Text style={styles.insuranceBtnText}>{t('common.no')}</Text>
-                </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.insuranceBtn, styles.insuranceBtnYes]}
-                  onPress={() => dispatch({ type: 'INSURANCE', accepted: true })}
-                >
-                  <Text style={styles.insuranceBtnText}>{t('common.yes')}</Text>
-                </TouchableOpacity>
+                <Button
+                  title={t('common.no')}
+                  onPress={() => {
+                    trainer.checkAction('insurance_no');
+                    dispatch({ type: 'INSURANCE', accepted: false });
+                  }}
+                  variant="outline"
+                  size="md"
+                  style={{ flex: 1 }}
+                  highlighted={trainingEnabled}
+                />
+                <Button
+                  title={t('common.yes')}
+                  onPress={() => {
+                    trainer.checkAction('insurance_yes');
+                    dispatch({ type: 'INSURANCE', accepted: true });
+                  }}
+                  variant="primary"
+                  size="md"
+                  style={{ flex: 1 }}
+                />
               </View>
             </View>
           </Animated.View>
@@ -397,7 +504,52 @@ export default function BlackjackGameScreen({
                   </Text>
                 ))}
               </View>
-              {trainerEnabled && gameState.roundResult.mistakes > 0 && (
+
+              {/* Training: per-decision breakdown */}
+              {trainingEnabled && trainer.training.roundDecisions.length > 0 && (
+                <View style={styles.decisionBreakdown}>
+                  <Text style={styles.decisionBreakdownTitle}>{t('training.roundDecisions')}</Text>
+                  {trainer.training.roundDecisions.map((d, i) => (
+                    <View key={i} style={styles.decisionRow}>
+                      <MaterialIcons
+                        name={d.isCorrect ? 'check-circle' : 'cancel'}
+                        size={16}
+                        color={d.isCorrect ? '#48bb78' : '#e53e3e'}
+                      />
+                      <Text style={styles.decisionText} numberOfLines={1}>
+                        {d.isCorrect
+                          ? t('training.youChose', { action: d.userAction.toUpperCase() })
+                          : `${t('training.youChose', { action: d.userAction.toUpperCase() })} — ${t('training.optimalWas', { action: d.optimalAction.toUpperCase() })}`}
+                      </Text>
+                    </View>
+                  ))}
+                  {trainer.training.roundDecisions.every(d => d.isCorrect) && (
+                    <Text style={styles.perfectRound}>{t('training.perfectRound')}</Text>
+                  )}
+                </View>
+              )}
+
+              {/* Training: compact session stats strip */}
+              {trainingEnabled && trainer.training.summary && (
+                <View style={styles.sessionStatsStrip}>
+                  <View style={styles.statChip}>
+                    <Text style={styles.statChipLabel}>{t('training.accuracy')}</Text>
+                    <Text style={styles.statChipValue}>
+                      {Math.round(trainer.training.summary.overallAccuracy * 100)}%
+                    </Text>
+                  </View>
+                  <View style={styles.statChip}>
+                    <Text style={styles.statChipLabel}>{t('training.streak')}</Text>
+                    <Text style={styles.statChipValue}>{trainer.training.currentStreak}</Text>
+                  </View>
+                  <View style={styles.statChip}>
+                    <Text style={styles.statChipLabel}>{t('training.decisions')}</Text>
+                    <Text style={styles.statChipValue}>{trainer.training.summary.totalDecisions}</Text>
+                  </View>
+                </View>
+              )}
+
+              {!trainingEnabled && gameState.roundResult.mistakes > 0 && (
                 <Text style={styles.mistakesResult}>
                   {t('game.strategyMistakes', { count: gameState.roundResult.mistakes })}
                 </Text>
@@ -406,9 +558,12 @@ export default function BlackjackGameScreen({
                 {t('game.net')}: {gameState.roundResult.totalPayout >= totalBets() ? '+' : ''}
                 ${gameState.roundResult.totalPayout - totalBets()}
               </Text>
-              <TouchableOpacity style={styles.newRoundBtn} onPress={handleNewRound}>
-                <Text style={styles.newRoundBtnText}>{t('game.newHand')}</Text>
-              </TouchableOpacity>
+              <Button
+                title={t('game.newHand')}
+                onPress={handleNewRound}
+                variant="primary"
+                size="md"
+              />
             </View>
           </Animated.View>
         )}
@@ -420,80 +575,118 @@ export default function BlackjackGameScreen({
               {/* Chip selector */}
               <View style={styles.chipSelector}>
                 {chips.map(chip => (
-                  <TouchableOpacity
+                  <Button
                     key={chip.value}
+                    title={`$${chip.value}`}
+                    onPress={() => setSelectedChip(chip.value)}
+                    variant="action"
+                    size="sm"
                     style={[
                       styles.chipButton,
                       { backgroundColor: chip.color },
                       selectedChip === chip.value && styles.chipButtonSelected,
                     ]}
-                    onPress={() => setSelectedChip(chip.value)}
-                  >
-                    <Text style={styles.chipButtonText}>${chip.value}</Text>
-                  </TouchableOpacity>
+                    textStyle={styles.chipButtonText}
+                  />
                 ))}
               </View>
               <View style={styles.dealButtonRow}>
+                {gameState.playerHands.some(h => h.bet > 0) && (
+                  <Button
+                    title={t('game.clearBets')}
+                    onPress={() => dispatch({ type: 'CLEAR_BETS' })}
+                    variant="outline"
+                    size="lg"
+                  />
+                )}
                 {gameState.previousBets.some(b => b > 0) && (
-                  <TouchableOpacity
-                    style={[styles.rebetButton]}
+                  <Button
+                    title={t('game.rebetAndDeal')}
                     onPress={() => {
+                      incrementRoundCounter();
                       trainer.resetRound();
                       dispatch({ type: 'REBET_AND_DEAL' });
                     }}
-                  >
-                    <Text style={styles.rebetButtonText}>{t('game.rebetAndDeal')}</Text>
-                  </TouchableOpacity>
+                    variant="action"
+                    size="lg"
+                  />
                 )}
-                <TouchableOpacity
-                  style={[styles.dealButton, !canDeal && styles.dealButtonDisabled, { flex: 1 }]}
+                <Button
+                  title={t('game.deal')}
                   onPress={() => dispatch({ type: 'DEAL' })}
+                  variant="primary"
+                  size="lg"
                   disabled={!canDeal}
-                >
-                  <Text style={styles.dealButtonText}>{t('game.deal')}</Text>
-                </TouchableOpacity>
+                  style={{ flex: 1 }}
+                />
               </View>
               {gameState.balance === 0 && (
-                <TouchableOpacity
-                  style={styles.resetMoneyButton}
+                <Button
+                  title={t('game.resetMoney')}
                   onPress={() => dispatch({ type: 'RESET_MONEY' })}
-                >
-                  <Text style={styles.resetMoneyButtonText}>{t('game.resetMoney')}</Text>
-                </TouchableOpacity>
+                  variant="destructive"
+                  size="md"
+                  fullWidth
+                  style={{ marginTop: 8 }}
+                />
               )}
             </>
           )}
 
+          {gameState.phase === 'dealing' && (
+            <View style={styles.waitingContainer}>
+              <Text style={styles.waitingText}>{t('game.dealing')}</Text>
+            </View>
+          )}
+
           {gameState.phase === 'player_turn' && (
             <View style={styles.actionButtons}>
-              <TouchableOpacity
-                style={[styles.actionBtn, !canHit && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'hit' && styles.actionBtnRecommended]}
+              <Button
+                title={t('game.hit')}
                 onPress={() => handleAction('hit', { type: 'HIT' })}
+                variant="action"
+                size="md"
                 disabled={!canHit}
-              >
-                <Text style={styles.actionBtnText}>{t('game.hit')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, !canStand && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'stand' && styles.actionBtnRecommended]}
+                highlighted={trainerEnabled && trainer.bestPlay?.action === 'hit'}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={t('game.stand')}
                 onPress={() => handleAction('stand', { type: 'STAND' })}
+                variant="action"
+                size="md"
                 disabled={!canStand}
-              >
-                <Text style={styles.actionBtnText}>{t('game.stand')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, !canDbl && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'double' && styles.actionBtnRecommended]}
+                highlighted={trainerEnabled && trainer.bestPlay?.action === 'stand'}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={t('game.double')}
                 onPress={() => handleAction('double', { type: 'DOUBLE' })}
+                variant="action"
+                size="md"
                 disabled={!canDbl}
-              >
-                <Text style={styles.actionBtnText}>{t('game.double')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.actionBtn, !canSpl && styles.actionBtnDisabled, trainerEnabled && trainer.bestPlay?.action === 'split' && styles.actionBtnRecommended]}
+                highlighted={trainerEnabled && trainer.bestPlay?.action === 'double'}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title={t('game.split')}
                 onPress={() => handleAction('split', { type: 'SPLIT' })}
+                variant="action"
+                size="md"
                 disabled={!canSpl}
-              >
-                <Text style={styles.actionBtnText}>{t('game.split')}</Text>
-              </TouchableOpacity>
+                highlighted={trainerEnabled && trainer.bestPlay?.action === 'split'}
+                style={{ flex: 1 }}
+              />
+              {canSur && (
+                <Button
+                  title={t('game.surrender')}
+                  onPress={() => handleAction('surrender', { type: 'SURRENDER' })}
+                  variant="action"
+                  size="md"
+                  highlighted={trainerEnabled && trainer.bestPlay?.action === 'surrender'}
+                  style={{ flex: 1 }}
+                />
+              )}
             </View>
           )}
 
@@ -708,26 +901,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 12,
   },
-  insuranceBtn: {
-    flex: 1,
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  insuranceBtnNo: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  insuranceBtnYes: {
-    backgroundColor: '#11d4c4',
-  },
-  insuranceBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   resultOverlay: {
     position: 'absolute',
     top: 0,
@@ -775,19 +948,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginBottom: 20,
   },
-  newRoundBtn: {
-    backgroundColor: '#11d4c4',
-    height: 48,
-    borderRadius: 24,
-    paddingHorizontal: 32,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  newRoundBtnText: {
-    color: '#0a1a18',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
   controls: {
     paddingHorizontal: 16,
     paddingVertical: 12,
@@ -827,83 +987,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     gap: 8,
   },
-  dealButton: {
-    backgroundColor: '#11d4c4',
-    height: 52,
-    borderRadius: 26,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#11d4c4',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-  },
-  rebetButton: {
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    height: 52,
-    borderRadius: 26,
-    paddingHorizontal: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  rebetButtonText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  resetMoneyButton: {
-    backgroundColor: 'rgba(229, 62, 62, 0.2)',
-    height: 44,
-    borderRadius: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(229, 62, 62, 0.4)',
-  },
-  resetMoneyButtonText: {
-    color: '#e53e3e',
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  dealButtonDisabled: {
-    backgroundColor: 'rgba(17, 212, 196, 0.3)',
-    shadowOpacity: 0,
-  },
-  dealButtonText: {
-    color: '#0a1a18',
-    fontSize: 18,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-  },
   actionButtons: {
     flexDirection: 'row',
     gap: 8,
-  },
-  actionBtn: {
-    flex: 1,
-    height: 48,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  actionBtnDisabled: {
-    opacity: 0.3,
-  },
-  actionBtnRecommended: {
-    borderColor: '#d69e2e',
-    borderWidth: 2,
-  },
-  actionBtnText: {
-    color: '#fff',
-    fontSize: 14,
-    fontWeight: 'bold',
   },
   waitingContainer: {
     height: 48,
@@ -913,5 +999,91 @@ const styles = StyleSheet.create({
   waitingText: {
     color: 'rgba(255,255,255,0.5)',
     fontSize: 16,
+  },
+  trainingToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 14,
+  },
+  trainingToggleText: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 11,
+    fontWeight: '600',
+  },
+  trainingToggleActive: {
+    color: '#11d4c4',
+  },
+  insuranceHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: 'rgba(214,158,46,0.15)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  insuranceHintText: {
+    color: '#d69e2e',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  decisionBreakdown: {
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: 10,
+    padding: 10,
+    marginBottom: 10,
+    gap: 6,
+  },
+  decisionBreakdownTitle: {
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 11,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
+  decisionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  decisionText: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    flex: 1,
+  },
+  perfectRound: {
+    color: '#48bb78',
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  sessionStatsStrip: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 10,
+  },
+  statChip: {
+    flex: 1,
+    backgroundColor: 'rgba(17,212,196,0.1)',
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  statChipLabel: {
+    color: 'rgba(255,255,255,0.4)',
+    fontSize: 10,
+    fontWeight: '600',
+  },
+  statChipValue: {
+    color: '#11d4c4',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });

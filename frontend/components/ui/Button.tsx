@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { ReactNode } from 'react';
 import {
   TouchableOpacity,
   Text,
   ActivityIndicator,
   StyleSheet,
   ViewStyle,
+  TextStyle,
 } from 'react-native';
 import { MaterialIcons } from '@expo/vector-icons';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -21,10 +22,14 @@ interface ButtonProps {
   disabled?: boolean;
   loading?: boolean;
   icon?: keyof typeof MaterialIcons.glyphMap;
+  /** Custom icon element (e.g. Image) instead of MaterialIcons */
+  iconElement?: ReactNode;
   iconPosition?: 'left' | 'right';
   highlighted?: boolean;
   fullWidth?: boolean;
   style?: ViewStyle;
+  /** Override text styles */
+  textStyle?: TextStyle;
 }
 
 const SIZE_CONFIG = {
@@ -41,10 +46,12 @@ export default function Button({
   disabled = false,
   loading = false,
   icon,
+  iconElement,
   iconPosition = 'left',
   highlighted = false,
   fullWidth = false,
   style,
+  textStyle,
 }: ButtonProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -129,21 +136,21 @@ export default function Button({
         <ActivityIndicator color={colors.text} />
       ) : (
         <>
-          {icon && iconPosition === 'left' && (
+          {iconPosition === 'left' && (iconElement ?? (icon && (
             <MaterialIcons name={icon} size={sizeConfig.iconSize} color={colors.text} />
-          )}
+          )))}
           <Text
-            style={{
+            style={[{
               color: colors.text,
               fontSize: sizeConfig.fontSize,
               fontWeight: 'bold',
-            }}
+            }, textStyle]}
           >
             {title}
           </Text>
-          {icon && iconPosition === 'right' && (
+          {iconPosition === 'right' && (iconElement ?? (icon && (
             <MaterialIcons name={icon} size={sizeConfig.iconSize} color={colors.text} />
-          )}
+          )))}
         </>
       )}
     </TouchableOpacity>

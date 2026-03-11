@@ -23,11 +23,11 @@ const TYPE_LABELS: Record<string, string> = {
 };
 
 const TYPE_COLORS: Record<string, string> = {
-  rule: '#3b82f6',
-  key_concept: '#8b5cf6',
-  scenario: '#f59e0b',
-  tip: '#22c55e',
-  quiz: '#ec4899',
+  rule: Colors.learn.rule,
+  key_concept: Colors.learn.keyConcept,
+  scenario: Colors.learn.scenario,
+  tip: Colors.learn.tip,
+  quiz: Colors.learn.quiz,
 };
 
 export default function LearningCardView({ card, onQuizAnswer, onQuizAnswered }: Props) {
@@ -69,9 +69,9 @@ export default function LearningCardView({ card, onQuizAnswer, onQuizAnswered }:
             {t(card.bodyKey)}
           </Text>
           {card.type === 'tip' && (
-            <View style={[styles.tipBadge, { backgroundColor: 'rgba(34, 197, 94, 0.1)' }]}>
-              <MaterialIcons name="lightbulb" size={14} color="#22c55e" />
-              <Text style={{ color: '#22c55e', fontSize: 12, fontWeight: '600' }}>
+            <View style={[styles.tipBadge, { backgroundColor: `${Colors.learn.tip}1a` }]}>
+              <MaterialIcons name="lightbulb" size={14} color={Colors.learn.tip} />
+              <Text style={{ color: Colors.learn.tip, fontSize: 12, fontWeight: '600' }}>
                 {t('learn.cardType.tip')}
               </Text>
             </View>

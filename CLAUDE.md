@@ -19,7 +19,7 @@ npm start              # Start Expo dev server
 npm run ios            # Run on iOS simulator
 npm run android        # Run on Android emulator
 npm run web            # Run on web
-npx jest               # Run all frontend tests (257 tests)
+npx jest               # Run all frontend tests (319 tests)
 npx jest __tests__/e2e/  # Run frontend E2E tests only
 npx jest __tests__/api.test.ts  # Run a single test file
 ```
@@ -28,7 +28,7 @@ npx jest __tests__/api.test.ts  # Run a single test file
 ```bash
 pip install -r requirements.txt         # Install dependencies
 pip install -r test-requirements.txt    # Install test dependencies
-pytest tests/ -v                        # Run all backend tests (51 tests)
+pytest tests/ -v                        # Run all backend tests (70 tests)
 pytest tests/test_e2e.py -v             # Run backend E2E tests only
 pytest tests/test_handlers.py::test_signup_success -v  # Run a single test
 serverless deploy                       # Deploy to AWS
@@ -62,7 +62,7 @@ serverless deploy                       # Deploy to AWS
 - `constants/theme.ts` — Light/dark mode color definitions
 - `components/` — Reusable UI components
 - `hooks/` — Theme, color scheme, and haptic feedback hooks
-- `__tests__/` — Jest tests (309 tests: game engine, strategy, training framework, learning framework, E2E flows)
+- `__tests__/` — Jest tests (319 tests: game engine, strategy, training framework, learning framework, E2E flows)
 
 ### Auth Flow
 Frontend sends email/password to `/signup` or `/login` → backend hashes password and stores in DynamoDB (signup) or verifies and returns JWT (login) → frontend stores token in component state and navigates to home-dashboard.
@@ -84,17 +84,18 @@ Frontend sends email/password to `/signup` or `/login` → backend hashes passwo
   - `TestErrorHandlingFlows` — Expired tokens, missing auth, validation
   - `TestExtendedStatsFlow` — Optional fields (net_payout, hands_played, details)
 
-**Frontend (309 tests across 15 files):**
+**Frontend (319 tests across 16 files):**
 - `__tests__/game-engine.test.ts` — Game engine state machine (43 tests)
 - `__tests__/strategy.test.ts` — Basic strategy tables (41 tests)
 - `__tests__/api.test.ts` — API interaction patterns (6 tests)
 - `__tests__/mandatory-details.test.ts` — Onboarding validation (21 tests)
 - `__tests__/training/` — Training framework modules (117 tests)
-- `__tests__/e2e/` — End-to-end integration tests (51 tests):
+- `__tests__/e2e/` — End-to-end integration tests (61 tests):
   - `game-engine-integration.test.ts` — Full game lifecycle (bet → deal → play → settle), splits, doubles, multi-round
   - `game-training-flow.test.ts` — Game → adapter → session → analytics → progress → milestones pipeline
   - `auth-api-flow.test.ts` — Auth, onboarding, stats, profile, password reset API flows
   - `learning-journey-flow.test.ts` — Learning card journey: level filtering, swipe mechanics, quiz tracking, registry, completion
+  - `learning-api-flow.test.ts` — Learning API flows: save/fetch progress, summary, sync utilities
 
 ## Key Configuration
 

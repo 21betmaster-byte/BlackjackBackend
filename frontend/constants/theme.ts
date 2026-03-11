@@ -29,6 +29,15 @@ export const Colors = {
     border: '#2a4a46', // border-dark from HTML
   },
   error: '#ff4d4d', // Added from HTML tailwind.config
+  success: '#22c55e',
+  // Learning card type accent colors
+  learn: {
+    rule: '#3b82f6',
+    keyConcept: '#8b5cf6',
+    scenario: '#f59e0b',
+    tip: '#22c55e',
+    quiz: '#ec4899',
+  },
 };
 
 export const Fonts = Platform.select({

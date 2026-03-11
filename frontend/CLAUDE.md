@@ -142,10 +142,10 @@ training/
 ### Decision Categories
 Blackjack uses: `hard_total`, `soft_total`, `pair_split`, `insurance`.
 
-### Tests (309 total, 15 suites)
+### Tests (319 total, 16 suites)
 ```bash
-npx jest                                      # Run all 257 tests
-npx jest __tests__/e2e/                       # 29 tests — E2E integration flows
+npx jest                                      # Run all 319 tests
+npx jest __tests__/e2e/                       # 39 tests — E2E integration flows
 npx jest __tests__/strategy.test.ts           # 41 tests — strategy engine
 npx jest __tests__/training/                  # 117 tests — training modules
 npx jest __tests__/game-engine.test.ts        # 43 tests — game engine
@@ -158,6 +158,7 @@ npx jest __tests__/api.test.ts                # 6 tests — API/auth
 - `game-training-flow.test.ts` — Complete pipeline: game engine → BlackjackAdapter → TrainingSession → analytics → progress → milestones
 - `auth-api-flow.test.ts` — Full API flows: signup → login → onboarding → stats, password reset, profile management, training analytics
 - `learning-journey-flow.test.ts` — Full learning journey: level selection → card filtering → swipe mechanics → quiz tracking → completion → registry
+- `learning-api-flow.test.ts` — Learning API flows: save/fetch progress, summary, sync utilities with mocked axios
 
 ## Learning Framework (`learning/`)
 

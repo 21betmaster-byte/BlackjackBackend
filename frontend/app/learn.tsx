@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, StyleSheet, SafeAreaView, Platform } from 'react-native';
+import { View, StyleSheet, SafeAreaView, Platform, ActivityIndicator } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -100,14 +100,18 @@ export default function LearnScreen() {
   }, [phase, handleContinueTobridge]);
 
   if (phase === 'loading' || session.isLoading) {
-    return <View style={[styles.screen, { backgroundColor: themeColors.background }]} />;
+    return (
+      <View style={[styles.screen, styles.loadingContainer, { backgroundColor: themeColors.background }]}>
+        <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
   }
 
   if (phase === 'onboarding') {
     return (
       <SafeAreaView style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <View style={styles.header}>
-          <IconButton icon="close" onPress={() => router.back()} variant="filled" iconColor={themeColors.text} style={{ backgroundColor: isDark ? '#1c2726' : '#f1f5f9' }} />
+          <IconButton icon="close" onPress={() => router.back()} variant="filled" iconColor={themeColors.text} style={{ backgroundColor: isDark ? '#1c2726' : '#f1f5f9' }} accessibilityLabel="Close" />
         </View>
         <OnboardingFlow gameType={game} onComplete={handleOnboardingComplete} />
       </SafeAreaView>
@@ -119,7 +123,7 @@ export default function LearnScreen() {
       <SafeAreaView style={[styles.screen, { backgroundColor: themeColors.background }]}>
         <CompletionScreen progress={session.progress} totalCards={session.totalCards} />
         <View style={styles.continueButton}>
-          <IconButton icon="arrow-forward" onPress={handleContinueTobridge} variant="primary" size="lg" />
+          <IconButton icon="arrow-forward" onPress={handleContinueTobridge} variant="primary" size="lg" accessibilityLabel="Continue" />
         </View>
       </SafeAreaView>
     );
@@ -143,7 +147,7 @@ export default function LearnScreen() {
       <SafeAreaView style={[styles.screen, { backgroundColor: themeColors.background }]}>
         {/* Header */}
         <View style={styles.header}>
-          <IconButton icon="close" onPress={handleBack} variant="filled" iconColor={themeColors.text} style={{ backgroundColor: isDark ? '#1c2726' : '#f1f5f9' }} />
+          <IconButton icon="close" onPress={handleBack} variant="filled" iconColor={themeColors.text} style={{ backgroundColor: isDark ? '#1c2726' : '#f1f5f9' }} accessibilityLabel="Close" />
         </View>
 
         {/* Progress */}
@@ -177,6 +181,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: Platform.OS === 'android' ? 24 : 4,
     paddingBottom: 4,
+  },
+  loadingContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   continueButton: {
     position: 'absolute',

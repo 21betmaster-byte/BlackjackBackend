@@ -42,11 +42,11 @@ export default function QuizCardView({ quiz, onAnswer, onAnswered }: Props) {
 
           if (selectedIndex !== null) {
             if (index === quiz.correctIndex) {
-              bgColor = 'rgba(34, 197, 94, 0.15)';
-              borderColor = '#22c55e';
-              textColor = '#22c55e';
+              bgColor = `${Colors.success}26`;
+              borderColor = Colors.success;
+              textColor = Colors.success;
             } else if (index === selectedIndex && !isCorrect) {
-              bgColor = 'rgba(255, 77, 77, 0.15)';
+              bgColor = `${Colors.error}26`;
               borderColor = Colors.error;
               textColor = Colors.error;
             }
@@ -64,7 +64,7 @@ export default function QuizCardView({ quiz, onAnswer, onAnswered }: Props) {
                 {t(option.labelKey)}
               </Text>
               {selectedIndex !== null && index === quiz.correctIndex && (
-                <MaterialIcons name="check-circle" size={20} color="#22c55e" />
+                <MaterialIcons name="check-circle" size={20} color={Colors.success} />
               )}
               {selectedIndex !== null && index === selectedIndex && !isCorrect && index !== quiz.correctIndex && (
                 <MaterialIcons name="cancel" size={20} color={Colors.error} />
@@ -79,7 +79,7 @@ export default function QuizCardView({ quiz, onAnswer, onAnswered }: Props) {
           <MaterialIcons
             name={isCorrect ? 'check-circle' : 'info'}
             size={18}
-            color={isCorrect ? '#22c55e' : Colors.primary}
+            color={isCorrect ? Colors.success : Colors.primary}
           />
           <Text style={[styles.explanationText, { color: isDark ? '#9db9b7' : '#64748b' }]}>
             {t(quiz.explanationKey)}

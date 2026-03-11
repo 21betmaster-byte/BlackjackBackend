@@ -48,19 +48,21 @@ serverless deploy                       # Deploy to AWS
 - `handlers/auth.py` — Signup, login, Google auth, mandatory details, profile, password reset (OTP flow)
 - `handlers/stats.py` — Game stats persistence (POST /stats) — accepts `training_decisions` array, validates result in `{win, loss, push, training_session}`, uses Bearer token auth (same `_get_user_id_from_token` pattern as training.py)
 - `handlers/training.py` — Training analytics endpoints (GET /training/summary, GET /training/progress)
+- `handlers/learning.py` — Learning progress persistence (PUT /learning/progress, GET /learning/progress, GET /learning/summary)
 - `utils/auth.py` — Password hashing (bcrypt via passlib) and JWT token generation (python-jose, 30-min expiry)
 - `serverless.yml` — Lambda functions, API Gateway routes, DynamoDB table definitions
-- DynamoDB tables: **UsersTable** (key: email), **StatsTable** (key: userId + timestamp)
+- DynamoDB tables: **UsersTable** (key: email), **StatsTable** (key: userId + timestamp), **LearningTable** (key: userId + gameType)
 
 ### Frontend (`frontend/`)
-- `app/` — Expo Router file-based routing (screens: login, signup, home-dashboard, profile, settings, game, analytics, strategy-reference, stats-dashboard)
+- `app/` — Expo Router file-based routing (screens: login, signup, home-dashboard, profile, settings, game, analytics, strategy-reference, stats-dashboard, learn)
 - `training/` — Game-agnostic training framework (adapter pattern, session tracking, analytics, progress, milestones)
+- `learning/` — Game-agnostic learning card system (content provider pattern, swipable cards, skill levels, quizzes)
 - `game/` — Blackjack game engine, strategy tables, trainer hook
 - `config.ts` — Centralized API URL (production: `https://bi5sd3la1f.execute-api.us-east-1.amazonaws.com`)
 - `constants/theme.ts` — Light/dark mode color definitions
 - `components/` — Reusable UI components
 - `hooks/` — Theme, color scheme, and haptic feedback hooks
-- `__tests__/` — Jest tests (257 tests: game engine, strategy, training framework, E2E flows)
+- `__tests__/` — Jest tests (309 tests: game engine, strategy, training framework, learning framework, E2E flows)
 
 ### Auth Flow
 Frontend sends email/password to `/signup` or `/login` → backend hashes password and stores in DynamoDB (signup) or verifies and returns JWT (login) → frontend stores token in component state and navigates to home-dashboard.
@@ -69,10 +71,11 @@ Frontend sends email/password to `/signup` or `/login` → backend hashes passwo
 
 ### Test Structure
 
-**Backend (51 tests across 3 files):**
+**Backend (59 tests across 4 files):**
 - `tests/conftest.py` — Shared fixtures: DynamoDB table setup, mock context, auth helpers
 - `tests/test_handlers.py` — Unit tests for individual handler functions (27 tests)
 - `tests/test_training.py` — Unit tests for training analytics endpoints (8 tests)
+- `tests/test_learning.py` — Learning progress endpoints (8 tests): save/resume/complete flow, multi-game summary, validation, multi-user isolation
 - `tests/test_e2e.py` — End-to-end flow tests across multiple endpoints (16 tests):
   - `TestAuthOnboardingFlow` — Signup → login → onboarding → profile (including Google auth)
   - `TestPasswordResetFlow` — Forgot password → OTP → reset → login
@@ -81,20 +84,21 @@ Frontend sends email/password to `/signup` or `/login` → backend hashes passwo
   - `TestErrorHandlingFlows` — Expired tokens, missing auth, validation
   - `TestExtendedStatsFlow` — Optional fields (net_payout, hands_played, details)
 
-**Frontend (257 tests across 12 files):**
+**Frontend (309 tests across 15 files):**
 - `__tests__/game-engine.test.ts` — Game engine state machine (43 tests)
 - `__tests__/strategy.test.ts` — Basic strategy tables (41 tests)
 - `__tests__/api.test.ts` — API interaction patterns (6 tests)
 - `__tests__/mandatory-details.test.ts` — Onboarding validation (21 tests)
 - `__tests__/training/` — Training framework modules (117 tests)
-- `__tests__/e2e/` — End-to-end integration tests (29 tests):
+- `__tests__/e2e/` — End-to-end integration tests (51 tests):
   - `game-engine-integration.test.ts` — Full game lifecycle (bet → deal → play → settle), splits, doubles, multi-round
   - `game-training-flow.test.ts` — Game → adapter → session → analytics → progress → milestones pipeline
   - `auth-api-flow.test.ts` — Auth, onboarding, stats, profile, password reset API flows
+  - `learning-journey-flow.test.ts` — Learning card journey: level filtering, swipe mechanics, quiz tracking, registry, completion
 
 ## Key Configuration
 
 - **TypeScript paths:** `@/*` maps to project root (`tsconfig.json`)
-- **Backend env vars** (set via serverless.yml): `SECRET_KEY`, `USERS_TABLE`, `STATS_TABLE`
+- **Backend env vars** (set via serverless.yml): `SECRET_KEY`, `USERS_TABLE`, `STATS_TABLE`, `LEARNING_TABLE`
 - **Frontend API URL:** hardcoded in `frontend/config.ts` (switch to localhost for local dev)
 - Backend tests use **moto** to mock AWS DynamoDB

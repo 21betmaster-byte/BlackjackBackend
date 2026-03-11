@@ -43,6 +43,7 @@ function RootNavigator() {
         <Stack.Screen name="training-analytics" options={{ headerShown: false }} />
         <Stack.Screen name="strategy-reference" options={{ headerShown: false }} />
         <Stack.Screen name="stats-dashboard" options={{ headerShown: false }} />
+        <Stack.Screen name="learn" options={{ headerShown: false }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

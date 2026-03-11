@@ -12,6 +12,7 @@ RESET_TOKEN_EXPIRE_MINUTES = int(os.getenv("RESET_TOKEN_EXPIRE_MINUTES", "5"))
 # --- DynamoDB Tables ---
 USERS_TABLE = os.getenv("USERS_TABLE", "UsersTable")
 STATS_TABLE = os.getenv("STATS_TABLE", "StatsTable")
+LEARNING_TABLE = os.getenv("LEARNING_TABLE", "LearningTable")
 
 # --- SES Email ---
 SES_REGION = os.getenv("SES_REGION", "us-east-1")

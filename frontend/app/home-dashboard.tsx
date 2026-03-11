@@ -143,7 +143,7 @@ const HomeDashboardScreen = () => {
                   />
                   <Button
                     title={t('home.learnMode')}
-                    onPress={() => router.push('/how-to-play')}
+                    onPress={() => router.push('/learn?game=blackjack')}
                     variant="primary"
                     size="sm"
                     icon="school"

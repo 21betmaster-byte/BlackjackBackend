@@ -60,6 +60,7 @@ Props: `icon`, `brandColor`, `label`, `onPress`.
 | `app/stats-dashboard.tsx` | Stats | `stats` | Overview cards (decisions/accuracy/sessions), accuracy trend chart, weakness evolution, money metrics |
 | `app/training-analytics.tsx` | Analytics | — | 3-tab view (This Session / Progress / Milestones), category breakdowns, accuracy trends, weakness evolution, money metrics, milestone badges |
 | `app/how-to-play.tsx` | Tutorial | — | Swipeable intro cards → interactive lessons |
+| `app/learn.tsx` | Learn Mode | — | Guided learning journey: onboarding → skill level → swipable cards → completion → training bridge |
 | `app/profile-settings-invite.tsx` | Profile | `profile` | Profile photo, account settings links, preferences (language/dark mode/haptics), referral/invite section, logout |
 | `app/profile-personal-details.tsx` | Account Settings | `profile` | Identity tab (name, DOB, country, email) + Security tab (change password with strength meter) |
 
@@ -77,6 +78,13 @@ Props: `icon`, `brandColor`, `label`, `onPress`.
 | `components/PlayingCard.tsx` | `blackjack-game.tsx`, `InteractiveLesson.tsx` | Card rendering (face up/down) |
 | `components/HowToPlay/SwipeableInstructionCards.tsx` | `how-to-play.tsx` | Intro swipe cards |
 | `components/HowToPlay/InteractiveLesson.tsx` | `how-to-play.tsx` | Guided scenarios with action buttons |
+| `components/Learning/OnboardingFlow.tsx` | `learn.tsx` | 3-step onboarding: welcome → swipe demo → level picker |
+| `components/Learning/SwipableCardStack.tsx` | `learn.tsx` | Tinder-style swipable card stack (reanimated + gesture handler) |
+| `components/Learning/LearningCardView.tsx` | `SwipableCardStack.tsx` | Routes card type to sub-renderer |
+| `components/Learning/QuizCardView.tsx` | `LearningCardView.tsx` | Interactive quiz with answer feedback |
+| `components/Learning/ScenarioCardView.tsx` | `LearningCardView.tsx` | Mini blackjack table with PlayingCard |
+| `components/Learning/CompletionScreen.tsx` | `learn.tsx` | Celebration + stats summary |
+| `components/Learning/TrainingBridge.tsx` | `learn.tsx` | CTA to start training mode |
 | `game/engine.ts` | `blackjack-game.tsx` | Pure game logic state machine |
 | `game/strategy.ts` | `useTrainer.ts`, `BlackjackAdapter.ts` | Basic strategy tables + detailed play with explanations |
 | `game/useTrainer.ts` | `blackjack-game.tsx` | Strategy hints, delegates to training framework |
@@ -87,6 +95,7 @@ Props: `icon`, `brandColor`, `label`, `onPress`.
 signup → login → mandatory-details → language-theme-setup → home-dashboard
                                                                 ├── blackjack-game ↔ how-to-play
                                                                 │     └── training-analytics
+                                                                ├── learn (onboard → swipe cards → completion → training bridge)
                                                                 ├── strategy-reference
                                                                 ├── stats-dashboard
                                                                 └── profile-settings-invite
@@ -133,7 +142,7 @@ training/
 ### Decision Categories
 Blackjack uses: `hard_total`, `soft_total`, `pair_split`, `insurance`.
 
-### Tests (257 total, 12 suites)
+### Tests (309 total, 15 suites)
 ```bash
 npx jest                                      # Run all 257 tests
 npx jest __tests__/e2e/                       # 29 tests — E2E integration flows
@@ -148,11 +157,38 @@ npx jest __tests__/api.test.ts                # 6 tests — API/auth
 - `game-engine-integration.test.ts` — Full game lifecycle: bet → deal → play → settle, doubles, splits, multi-round, rebet
 - `game-training-flow.test.ts` — Complete pipeline: game engine → BlackjackAdapter → TrainingSession → analytics → progress → milestones
 - `auth-api-flow.test.ts` — Full API flows: signup → login → onboarding → stats, password reset, profile management, training analytics
+- `learning-journey-flow.test.ts` — Full learning journey: level selection → card filtering → swipe mechanics → quiz tracking → completion → registry
+
+## Learning Framework (`learning/`)
+
+Game-agnostic learning card system using the **content provider pattern**. Any casino game can plug in by implementing `LearningContentProvider`.
+
+### Architecture
+```
+learning/
+  types.ts                       All interfaces (LearningCard, SkillLevel, LearningContentProvider, LearningProgress, etc.)
+  registry.ts                    Central provider registry (auto-registers providers)
+  storage.ts                     AsyncStorage persistence (betmaster21_learn_ prefix)
+  useLearningSession.ts          React hook managing card deck state, swipe actions, quiz answers
+  content/
+    blackjack.ts                 Blackjack learning cards (~27 cards: rules, concepts, scenarios, tips, quizzes)
+```
+
+### Key APIs
+- `getProvider(gameType)` — Get registered content provider
+- `useLearningSession(gameType, skillLevel)` — Returns `{ cards, currentCard, swipeRight(), swipeLeft(), answerQuiz(), restart(), progress, isComplete }`
+- Skill levels: `'beginner'` | `'amateur'` | `'pro'` — filter card content by user ability
+
+### Adding a New Game
+1. Create `learning/content/NewGame.ts` implementing `LearningContentProvider`
+2. Register in `learning/registry.ts`
+3. Add scenario renderer in `components/Learning/renderers/`
+4. Add i18n keys under `learn.<gameType>.*`
 
 ## i18n
 
 11 locales in `i18n/locales/`: en, zh, fr, it, nl, es, tl, de, cs, el, pl.
-Namespaces in each JSON: `common`, `auth`, `home`, `game`, `profile`, `howToPlay`, `nav`, `setup`, `onboarding`, `loader`, `training`, `strategy`, `stats`, `drill`.
+Namespaces in each JSON: `common`, `auth`, `home`, `game`, `profile`, `howToPlay`, `nav`, `setup`, `onboarding`, `loader`, `training`, `strategy`, `stats`, `drill`, `learn`.
 Use `useTranslation()` hook with `t('namespace.key')`. When adding new UI text, add keys to all 11 locale files.
 
 ## Conventions

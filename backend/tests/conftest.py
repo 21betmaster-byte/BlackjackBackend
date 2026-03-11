@@ -20,6 +20,7 @@ from jose import jwt
 TEST_ENV = {
     "USERS_TABLE": "TestUsersTable",
     "STATS_TABLE": "TestStatsTable",
+    "LEARNING_TABLE": "TestLearningTable",
     "SECRET_KEY": "test-secret-key",
     "APP_NAME": "TestApp",
     "AWS_DEFAULT_REGION": "us-east-1",
@@ -53,6 +54,18 @@ def dynamodb_tables():
                 ],
                 BillingMode="PAY_PER_REQUEST",
             )
+            dynamodb.create_table(
+                TableName="TestLearningTable",
+                KeySchema=[
+                    {"AttributeName": "userId", "KeyType": "HASH"},
+                    {"AttributeName": "gameType", "KeyType": "RANGE"},
+                ],
+                AttributeDefinitions=[
+                    {"AttributeName": "userId", "AttributeType": "S"},
+                    {"AttributeName": "gameType", "AttributeType": "S"},
+                ],
+                BillingMode="PAY_PER_REQUEST",
+            )
 
             # Reload modules inside mock_aws so boto3 resources use moto
             import config
@@ -62,6 +75,7 @@ def dynamodb_tables():
             from handlers import auth as auth_handlers
             from handlers import stats as stats_handlers
             from handlers import training as training_handlers
+            from handlers import learning as learning_handlers
             from importlib import reload
 
             reload(config)
@@ -71,11 +85,13 @@ def dynamodb_tables():
             reload(auth_handlers)
             reload(stats_handlers)
             reload(training_handlers)
+            reload(learning_handlers)
 
             yield {
                 "auth": auth_handlers,
                 "stats": stats_handlers,
                 "training": training_handlers,
+                "learning": learning_handlers,
                 "dynamodb": dynamodb,
             }
 
